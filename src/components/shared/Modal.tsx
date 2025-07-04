@@ -29,18 +29,6 @@ const Modal: React.FC<ModalProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
-  // Prevent background scroll when modal is open
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
-
   // Portal target
   const modalRoot = typeof window !== "undefined" ? document.body : null;
 
@@ -56,13 +44,13 @@ const Modal: React.FC<ModalProps> = ({
           {/* Overlay */}
           <div
             ref={overlayRef}
-            className="absolute inset-0 bg-black opacity-20"
+            className="absolute inset-0 bg-black opacity-30"
             onClick={onClose}
             aria-label="Close modal overlay"
           />
           {/* Modal content */}
           <motion.div
-            className={`relative z-10 bg-white rounded-lg shadow-lg  ${
+            className={`relative z-10  rounded-lg shadow-lg  ${
               className || ""
             }`}
             initial={{ opacity: 0 }}

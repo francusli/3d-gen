@@ -2,16 +2,44 @@
 
 import { useState } from "react";
 import ArtifactsDisplay from "@/components/ArtifactsDisplay";
-import { error } from "console";
-import { div } from "three/tsl";
+import { ArrowUp } from "lucide-react";
 
 export default function Home() {
-  const [prompt, setPrompt] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState({ preview: 0, refine: 0 });
+
+  return (
+    <div className="min-h-screen bg-gray-200">
+      {progress.preview > 0 || progress.refine > 0 ? (
+        <GenerationProgressSection progress={progress} />
+      ) : null}
+
+      <PromptSection
+        onModelUrl={setModelUrl}
+        onPreviewUrl={setPreviewUrl}
+        onProgress={setProgress}
+      />
+
+      <ArtifactsDisplay modelUrl={modelUrl} previewUrl={previewUrl} />
+    </div>
+  );
+}
+
+function PromptSection({
+  onModelUrl,
+  onPreviewUrl,
+  onProgress,
+}: {
+  onModelUrl: (url: string | null) => void;
+  onPreviewUrl: (url: string | null) => void;
+  onProgress: (progress: { preview: number; refine: number }) => void;
+}) {
+  const MAX_PROMPT_HEIGHT = 800;
+
+  const [prompt, setPrompt] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -21,9 +49,9 @@ export default function Home() {
 
     setIsGenerating(true);
     setError(null);
-    setModelUrl(null);
-    setPreviewUrl(null);
-    setProgress({ preview: 0, refine: 0 });
+    onModelUrl(null);
+    onPreviewUrl(null);
+    onProgress({ preview: 0, refine: 0 });
 
     try {
       const response = await fetch("/api/generate-3d", {
@@ -44,8 +72,11 @@ export default function Home() {
       }
 
       if (data.preview?.modelUrls?.glb)
-        setPreviewUrl(data.preview.modelUrls.glb);
-      if (data.refined?.modelUrls?.glb) setModelUrl(data.refined.modelUrls.glb);
+        onPreviewUrl(data.preview.modelUrls.glb);
+      if (data.refined?.modelUrls?.glb) onModelUrl(data.refined.modelUrls.glb);
+
+      // Optionally update progress if you have progress info in data
+      // onProgress({ preview: ..., refine: ... });
 
       console.log(data);
     } catch (err) {
@@ -56,62 +87,41 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-200">
-      {isGenerating && <GenerationProgressSection progress={progress} />}
-
-      <ArtifactsDisplay modelUrl={modelUrl} previewUrl={previewUrl} />
-
-      {/* <PromptSection
-        error={error}
-        prompt={prompt}
-        setPrompt={setPrompt}
-        isGenerating={isGenerating}
-        handleGenerate={handleGenerate}
-      /> */}
-    </div>
-  );
-}
-
-function PromptSection({
-  error,
-  prompt,
-  setPrompt,
-  isGenerating,
-  handleGenerate,
-}: {
-  error: string | null;
-  prompt: string;
-  setPrompt: (prompt: string) => void;
-  isGenerating: boolean;
-  handleGenerate: () => void;
-}) {
-  return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+    <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg w-[40%] border border-white/30 p-2 z-5 absolute bottom-0 left-1/2 transform -translate-x-1/2 mb-3">
       {error && (
         <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
           {error}
         </div>
       )}
-      <textarea
-        id="prompt"
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        placeholder="Describe the 3D model you want to generate..."
-        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-        rows={3}
-      />
 
-      <button
-        onClick={handleGenerate}
-        disabled={isGenerating}
-        className={`w-full py-3 px-4 rounded-md font-medium text-white ${
-          isGenerating
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-blue-600 hover:bg-blue-700"
-        } transition-colors`}
-      >
-        {isGenerating ? "Loading..." : "Generate 3D Model"}
-      </button>
+      <div>
+        <textarea
+          id="prompt"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Describe the 3D model..."
+          className={`w-full px-3 py-2 text-black focus:outline-none resize-none mb-2 min-h-[40px] max-h-[${MAX_PROMPT_HEIGHT}px] overflow-y-auto transition-all duration-300`}
+          rows={1}
+          onInput={(e) => {
+            const target = e.target as HTMLTextAreaElement;
+            target.style.height = "auto";
+            target.style.height =
+              Math.min(target.scrollHeight, MAX_PROMPT_HEIGHT) + "px";
+          }}
+        />
+
+        <button
+          onClick={handleGenerate}
+          disabled={isGenerating}
+          className={`p-2 font-medium ${
+            prompt.trim()
+              ? "bg-black text-grey-900"
+              : "bg-black/10 text-gray-400"
+          }  rounded-full flex items-center justify-center ml-auto transition-colors`}
+        >
+          <ArrowUp size={20} />
+        </button>
+      </div>
     </div>
   );
 }
