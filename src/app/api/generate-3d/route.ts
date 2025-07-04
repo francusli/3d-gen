@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { MeshyClient } from "@/lib/meshy/client";
+import { upload3DModel, saveModelArtifact } from "@/lib/supabase/queries";
 
 const MESHY_API_KEY = process.env.NEXT_PUBLIC_MESHY_API_KEY;
 
@@ -44,6 +45,40 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Upload the refined model to Supabase storage and save to database
+    let storedModelUrl = null;
+    let savedArtifact = null;
+
+    if (result.refined.model_urls?.glb) {
+      try {
+        // Fetch the refined GLB file
+        const modelResponse = await fetch(result.refined.model_urls.glb);
+        if (modelResponse.ok) {
+          const modelBlob = await modelResponse.blob();
+
+          // Generate a unique filename
+          const timestamp = Date.now();
+          const fileName = `model_${timestamp}.glb`;
+
+          // Upload to Supabase storage
+          storedModelUrl = await upload3DModel(modelBlob, fileName);
+
+          if (storedModelUrl) {
+            // Save to database
+            savedArtifact = await saveModelArtifact(
+              "Frankie Li",
+              storedModelUrl,
+              prompt
+            );
+            console.log("Model saved successfully:", savedArtifact);
+          }
+        }
+      } catch (uploadError) {
+        console.error("Error uploading model:", uploadError);
+        // Don't fail the entire request if upload fails
+      }
+    }
+
     return NextResponse.json({
       success: true,
       preview: {
@@ -53,6 +88,11 @@ export async function POST(request: NextRequest) {
       refined: {
         modelUrls: result.refined.model_urls,
         status: result.refined.status,
+      },
+      // Include the stored model info
+      stored: {
+        modelUrl: storedModelUrl,
+        artifact: savedArtifact,
       },
     });
   } catch (error) {

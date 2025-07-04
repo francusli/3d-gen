@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import ArtifactsDisplay from "@/components/ArtifactsDisplay";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Bell } from "lucide-react";
 
 export default function Home() {
   const [modelUrl, setModelUrl] = useState<string | null>(null);
@@ -11,15 +11,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-200">
-      {progress.preview > 0 || progress.refine > 0 ? (
-        <GenerationProgressSection progress={progress} />
-      ) : null}
-
       <PromptSection
         onModelUrl={setModelUrl}
         onPreviewUrl={setPreviewUrl}
         onProgress={setProgress}
       />
+
+      <GenerationLoadingSection progress={progress} />
 
       <ArtifactsDisplay modelUrl={modelUrl} previewUrl={previewUrl} />
     </div>
@@ -40,6 +38,7 @@ function PromptSection({
   const [prompt, setPrompt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -49,6 +48,7 @@ function PromptSection({
 
     setIsGenerating(true);
     setError(null);
+    setSuccessMessage(null);
     onModelUrl(null);
     onPreviewUrl(null);
     onProgress({ preview: 0, refine: 0 });
@@ -75,14 +75,22 @@ function PromptSection({
         onPreviewUrl(data.preview.modelUrls.glb);
       if (data.refined?.modelUrls?.glb) onModelUrl(data.refined.modelUrls.glb);
 
-      // Optionally update progress if you have progress info in data
-      // onProgress({ preview: ..., refine: ... });
-
-      console.log(data);
+      // Show success message if model was saved
+      if (data.stored?.artifact) {
+        setSuccessMessage("3D model generated and saved successfully!");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  // Handler for Enter/Shift+Enter in textarea
+  const handlePromptKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!isGenerating) handleGenerate();
     }
   };
 
@@ -91,6 +99,12 @@ function PromptSection({
       {error && (
         <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
           {error}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-md">
+          {successMessage}
         </div>
       )}
 
@@ -108,6 +122,7 @@ function PromptSection({
             target.style.height =
               Math.min(target.scrollHeight, MAX_PROMPT_HEIGHT) + "px";
           }}
+          onKeyDown={handlePromptKeyDown}
         />
 
         <button
@@ -126,35 +141,20 @@ function PromptSection({
   );
 }
 
-// TODO: Fix this, it doesn't work
-function GenerationProgressSection({
+function GenerationLoadingSection({
   progress,
 }: {
   progress: { preview: number; refine: number };
 }) {
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-      <h2 className="text-lg font-semibold mb-4">Generation Progress</h2>
-      <div className="space-y-2">
+    <div className="rounded-lg absolute top-0 right-0 pt-4 pr-6">
+      <Bell size={24} />
+      {progress.preview > 0 && (
         <div>
-          <p className="text-sm text-gray-600">Preview Generation</p>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${progress.preview}%` }}
-            />
-          </div>
+          <p>{`Preview Generation ${progress.preview}%`}</p>
+          <p>{`Refine Generation ${progress.refine}%`}</p>
         </div>
-        <div>
-          <p className="text-sm text-gray-600">Texture Refinement</p>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${progress.refine}%` }}
-            />
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
