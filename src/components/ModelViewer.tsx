@@ -13,11 +13,16 @@ import * as THREE from "three";
 import Modal from "@/components/shared/Modal";
 import { setBrightness } from "@/utils";
 import { motion } from "framer-motion";
+import Image from "next/image";
+import { ModelArtifact } from "@/lib/supabase/queries";
 
 // Utility function to create proxied URLs to avoid CORS issues
 export function createProxiedUrl(originalUrl: string): string {
   return `/api/generate-3d?modelUrl=${encodeURIComponent(originalUrl)}`;
 }
+
+// Fallback model URL - using a reliable local model or a known working URL
+const FALLBACK_MODEL_URL = "/assets/3d/refined-model.glb";
 
 function Model({
   url,
@@ -50,7 +55,7 @@ function Model({
     return clone;
   }, [scene]);
 
-  // Update brightness on hover state change
+  // Update brightness on hover state change for grid view
   useEffect(() => {
     if (groupRef.current && groupRef.current.children[0]) {
       if (!enableBrightness) return;
@@ -83,45 +88,64 @@ function Model({
   );
 }
 
-// ModalWithSidePanels component: Modal with animated left/right panels and main content
-function ModalWithSidePanels({
+// ModalWithPanels component: Modal with animated left/right panels and main content
+function ModalWithPanels({
   onClose,
-  selectedModel,
+  selectedArtifact,
 }: {
   onClose: () => void;
-  selectedModel: string | null;
+  selectedArtifact: ModelArtifact | null;
 }) {
-  const open = !!selectedModel;
+  const PFP_DIMENSIONS = 32;
+  const open = !!selectedArtifact;
 
-  const animateOpenLeft = { x: 0, opacity: 1 };
-  const animateClosedLeft = { x: 50, opacity: 0 };
-  const animateOpenRight = { x: 0, opacity: 1 };
-  const animateClosedRight = { x: -50, opacity: 0 };
+  const animateOpenDown = { y: 0, opacity: 1 };
+  const animateClosedDown = { y: -50, opacity: 0 };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      className="flex gap-4 items-stretch relative"
+      className="flex flex-col gap-4 items-stretch relative"
     >
-      {/* Left Panel */}
-      <motion.div
-        initial={animateClosedLeft}
-        animate={open ? animateOpenLeft : animateClosedLeft}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="bg-white border-r border-gray-200 rounded-lg border-md flex flex-col justify-center items-center"
-      >
-        <h1 className="font-mono text-lg">Generations</h1>
-      </motion.div>
-
       {/* Main Content */}
-      <div className="w-[600px] h-[600px] bg-white rounded-lg border-md">
-        {selectedModel && (
+      <div className="w-[600px] h-[600px] bg-gray-50 rounded-lg border-md">
+        <div className="absolute top-0 left-0 m-2 p-1.5 bg-gray-100 rounded-lg flex items-center gap-2">
+          <Image
+            src="https://media.licdn.com/dms/image/v2/D5603AQEuW4OFn35Elg/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1718167245956?e=2147483647&v=beta&t=QnWhC0QGKLPqx4sglJ0pi6EuEkxlVebNOSyTOji9_CE"
+            alt={selectedArtifact?.name || "Name"}
+            className="rounded-full"
+            width={PFP_DIMENSIONS}
+            height={PFP_DIMENSIONS}
+          />
+          <div className="flex flex-col">
+            <p className="text-md font-medium">
+              {selectedArtifact?.name || "Unknown"}
+            </p>
+            <p className="text-sm text-gray-600">
+              {selectedArtifact?.date
+                ? formatDate(selectedArtifact.date)
+                : "Unknown date"}
+            </p>
+          </div>
+        </div>
+
+        {selectedArtifact && (
           <Canvas camera={{ position: [4, 2, 14], fov: 20 }}>
             <Suspense fallback={null}>
               <Center>
                 <Model
-                  url={selectedModel}
+                  url={selectedArtifact.model_url}
                   position={[0, 0, 0]}
                   variant="modal"
                 />
@@ -133,31 +157,38 @@ function ModalWithSidePanels({
         )}
       </div>
 
-      {/* Right Panel */}
+      {/* Bottom Panel */}
       <motion.div
-        initial={animateClosedRight}
-        animate={open ? animateOpenRight : animateClosedRight}
+        initial={animateClosedDown}
+        animate={open ? animateOpenDown : animateClosedDown}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="bg-white border-l border-gray-200 rounded-lg border-md flex flex-col justify-center items-center"
+        className="bg-white/80 backdrop-blur-lg rounded-lg border-md flex flex-col justify-center p-3 gap-1 w-fit m-auto"
       >
-        <div className="mt-4 text-gray-400">Tools, Download, Delete</div>
-        <p>Prompt</p>
+        <p className="text-sm -mt-1 text-gray-600">Prompt</p>
+        <p className="text-md">
+          {selectedArtifact?.prompt || "No prompt available"}
+        </p>
       </motion.div>
     </Modal>
   );
 }
 
-export default function ModelViewer({ modelUrls }: { modelUrls: string[] }) {
+export default function ModelViewer({
+  artifacts,
+}: {
+  artifacts: ModelArtifact[];
+}) {
   const columns = 7;
   const spacing = 5;
-  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [selectedArtifact, setSelectedArtifact] =
+    useState<ModelArtifact | null>(null);
 
   return (
     <div className="w-full h-screen">
       <Canvas orthographic camera={{ position: [10, 10, 10], zoom: 50 }}>
         <Suspense fallback={null}>
           <Center>
-            {modelUrls.map((url, i) => {
+            {artifacts.map((artifact, i) => {
               const row = Math.floor(i / columns);
               const col = i % columns;
               const xOffset = row % 2 === 0 ? 0 : spacing / 2;
@@ -168,10 +199,10 @@ export default function ModelViewer({ modelUrls }: { modelUrls: string[] }) {
               ];
               return (
                 <Model
-                  key={i}
-                  url={url}
+                  key={artifact.id}
+                  url={artifact.model_url}
                   position={position}
-                  onClick={() => setSelectedModel(url)}
+                  onClick={() => setSelectedArtifact(artifact)}
                 />
               );
             })}
@@ -181,9 +212,9 @@ export default function ModelViewer({ modelUrls }: { modelUrls: string[] }) {
       </Canvas>
 
       {/* Modal for the selected model */}
-      <ModalWithSidePanels
-        selectedModel={selectedModel}
-        onClose={() => setSelectedModel(null)}
+      <ModalWithPanels
+        selectedArtifact={selectedArtifact}
+        onClose={() => setSelectedArtifact(null)}
       />
     </div>
   );

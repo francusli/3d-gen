@@ -41,18 +41,19 @@ const Modal: React.FC<ModalProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          {/* Overlay */}
-          <div
+          <motion.div
             ref={overlayRef}
-            className="absolute inset-0 bg-black opacity-30"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={onClose}
             aria-label="Close modal overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
           />
-          {/* Modal content */}
+
           <motion.div
-            className={`relative z-10  rounded-lg shadow-lg  ${
-              className || ""
-            }`}
+            className={`relative z-10  rounded-lg ${className || ""}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

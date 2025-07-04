@@ -87,7 +87,7 @@ function PromptSection({
   };
 
   return (
-    <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg w-[40%] border border-white/30 p-2 z-5 absolute bottom-0 left-1/2 transform -translate-x-1/2 mb-3">
+    <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg w-[40%] p-2 z-5 absolute bottom-0 left-1/2 transform -translate-x-1/2 mb-3">
       {error && (
         <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
           {error}
@@ -115,7 +115,7 @@ function PromptSection({
           disabled={isGenerating}
           className={`p-2 font-medium ${
             prompt.trim()
-              ? "bg-black text-grey-900"
+              ? "bg-black text-gray-300"
               : "bg-black/10 text-gray-400"
           }  rounded-full flex items-center justify-center ml-auto transition-colors`}
         >
