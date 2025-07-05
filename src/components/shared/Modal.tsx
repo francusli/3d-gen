@@ -35,30 +35,19 @@ const Modal: React.FC<ModalProps> = ({
   const modalContent = (
     <AnimatePresence>
       {open && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center rounded-lg"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
+        <motion.div className="fixed inset-0 z-50 flex items-center justify-center rounded-lg">
           <motion.div
             ref={overlayRef}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60"
             onClick={onClose}
             aria-label="Close modal overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
           />
 
           <motion.div
             className={`relative z-10  rounded-lg ${className || ""}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            role="dialog"
             aria-modal="true"
           >
             {children}

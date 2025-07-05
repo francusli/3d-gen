@@ -9,6 +9,8 @@ A Next.js application that uses the Meshy AI API to generate 3D models from text
 - Support for different art styles (realistic, cartoon, low-poly, sculpture, PBR)
 - Download generated models in GLB format
 - Interactive 3D viewer with orbit controls
+- Automatic storage of generated models in Supabase
+- Database tracking of all generated models with prompts
 
 ## Prerequisites
 
@@ -33,13 +35,18 @@ npm install
 3. Create a `.env.local` file in the root directory:
 
 ```env
-MESHY_API_KEY=msy_your_api_key_here
+# Meshy AI Configuration
+NEXT_PUBLIC_MESHY_API_KEY=msy_your_api_key_here
+
+# Supabase Configuration (for storing generated models)
+NEXT_PUBLIC_SUPABASE_PROJECT_ID=your_supabase_project_id_here
+NEXT_PUBLIC_SUPABASE_API_KEY=your_supabase_anon_key_here
 ```
 
 For testing, you can use the test mode API key:
 
 ```env
-MESHY_API_KEY=msy_dummy_api_key_for_test_mode_12345678
+NEXT_PUBLIC_MESHY_API_KEY=msy_dummy_api_key_for_test_mode_12345678
 ```
 
 4. Run the development server:
@@ -64,6 +71,7 @@ npm run dev
 - **React Three Fiber**: React renderer for Three.js
 - **Three.js**: 3D graphics library
 - **Meshy AI API**: Text-to-3D generation
+- **Supabase**: Database and storage for generated models
 - **TypeScript**: Type safety
 - **Tailwind CSS**: Styling
 
@@ -79,13 +87,18 @@ src/
 ├── app/
 │   ├── api/
 │   │   └── generate-3d/
-│   │       └── route.ts      # API endpoint for 3D generation
+│   │       ├── route.ts      # API endpoint for 3D generation
+│   │       └── refine/
+│   │           └── route.ts  # API endpoint for refining models
 │   └── page.tsx              # Main UI page
 ├── components/
 │   └── ModelViewer.tsx       # 3D model viewer component
 ├── lib/
-│   └── meshy/
-│       └── client.ts         # Meshy API client
+│   ├── meshy/
+│   │   └── client.ts         # Meshy API client
+│   └── supabase/
+│       ├── client.ts         # Supabase client configuration
+│       └── queries.ts        # Database queries and storage functions
 └── utils/
     └── env.ts                # Environment utilities
 ```
@@ -96,7 +109,10 @@ This app is ready to deploy on Vercel:
 
 1. Push your code to GitHub
 2. Import the project in Vercel
-3. Add the `MESHY_API_KEY` environment variable
+3. Add the following environment variables:
+   - `NEXT_PUBLIC_MESHY_API_KEY`
+   - `NEXT_PUBLIC_SUPABASE_PROJECT_ID`
+   - `NEXT_PUBLIC_SUPABASE_API_KEY`
 4. Deploy!
 
 ## License
