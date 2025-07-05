@@ -2,23 +2,20 @@
 
 import { useState } from "react";
 import ArtifactsDisplay from "@/components/ArtifactsDisplay";
-import { ArrowUp, Bell } from "lucide-react";
+import { ArrowUp } from "lucide-react";
+import { glassmorphic1 } from "@/components/shared/sharedStyles";
+import Notifications from "@/components/Notifications";
+import { useTaskPolling } from "@/hooks/useTaskPolling";
+import { usePollingStore } from "@/stores/pollingStore";
 
 export default function Home() {
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [progress, setProgress] = useState({ preview: 0, refine: 0 });
 
   return (
     <div className="min-h-screen bg-gray-200">
-      <PromptSection
-        onModelUrl={setModelUrl}
-        onPreviewUrl={setPreviewUrl}
-        onProgress={setProgress}
-      />
-
-      <GenerationLoadingSection progress={progress} />
-
+      <PromptSection onModelUrl={setModelUrl} onPreviewUrl={setPreviewUrl} />
+      <Notifications previewUrl={previewUrl} />
       <ArtifactsDisplay modelUrl={modelUrl} previewUrl={previewUrl} />
     </div>
   );
@@ -27,18 +24,26 @@ export default function Home() {
 function PromptSection({
   onModelUrl,
   onPreviewUrl,
-  onProgress,
 }: {
   onModelUrl: (url: string | null) => void;
   onPreviewUrl: (url: string | null) => void;
-  onProgress: (progress: { preview: number; refine: number }) => void;
 }) {
   const MAX_PROMPT_HEIGHT = 800;
-
-  const [prompt, setPrompt] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const {
+    prompt,
+    setPrompt,
+    error,
+    successMessage,
+    isGenerating,
+    setIsGenerating,
+    setSuccessMessage,
+    setError,
+    setProgress,
+  } = usePollingStore();
+  const { startPolling, clearAllPolling } = useTaskPolling({
+    onModelUrl,
+    onPreviewUrl,
+  });
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -51,7 +56,8 @@ function PromptSection({
     setSuccessMessage(null);
     onModelUrl(null);
     onPreviewUrl(null);
-    onProgress({ preview: 0, refine: 0 });
+    setProgress({ preview: 0, refine: 0 });
+    clearAllPolling();
 
     try {
       const response = await fetch("/api/generate-3d", {
@@ -71,17 +77,11 @@ function PromptSection({
         throw new Error(data.error || "Failed to generate 3D model");
       }
 
-      if (data.preview?.modelUrls?.glb)
-        onPreviewUrl(data.preview.modelUrls.glb);
-      if (data.refined?.modelUrls?.glb) onModelUrl(data.refined.modelUrls.glb);
-
-      // Show success message if model was saved
-      if (data.stored?.artifact) {
-        setSuccessMessage("3D model generated and saved successfully!");
+      if (data.previewTaskId) {
+        startPolling(data.previewTaskId, prompt);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
       setIsGenerating(false);
     }
   };
@@ -95,7 +95,9 @@ function PromptSection({
   };
 
   return (
-    <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg w-[40%] p-2 z-5 absolute bottom-0 left-1/2 transform -translate-x-1/2 mb-3">
+    <div
+      className={`${glassmorphic1} rounded-2xl shadow-lg w-[40%] p-2 z-5 absolute bottom-0 left-1/2 transform -translate-x-1/2 mb-3`}
+    >
       {error && (
         <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
           {error}
@@ -128,33 +130,15 @@ function PromptSection({
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className={`p-2 font-medium ${
-            prompt.trim()
-              ? "bg-black text-gray-300"
-              : "bg-black/10 text-gray-400"
-          }  rounded-full flex items-center justify-center ml-auto transition-colors`}
+          className={`p-2 font-medium rounded-full flex items-center justify-center ml-auto transition-colors ${
+            isGenerating || !prompt.trim()
+              ? "cursor-not-allowed bg-black/10 text-gray-400"
+              : "bg-black text-gray-300"
+          }`}
         >
           <ArrowUp size={20} />
         </button>
       </div>
-    </div>
-  );
-}
-
-function GenerationLoadingSection({
-  progress,
-}: {
-  progress: { preview: number; refine: number };
-}) {
-  return (
-    <div className="rounded-lg absolute top-0 right-0 pt-4 pr-6">
-      <Bell size={24} />
-      {progress.preview > 0 && (
-        <div>
-          <p>{`Preview Generation ${progress.preview}%`}</p>
-          <p>{`Refine Generation ${progress.refine}%`}</p>
-        </div>
-      )}
     </div>
   );
 }

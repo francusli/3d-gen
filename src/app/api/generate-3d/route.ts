@@ -33,67 +33,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await meshyClient.generateTextTo3D(prompt, {
+    // Create preview task
+    const previewTaskId = await meshyClient.createTextTo3DPreview({
+      prompt,
       negative_prompt: negativePrompt,
       art_style: artStyle,
       should_remesh: shouldRemesh,
-      onPreviewProgress: (progress) => {
-        console.log(`Preview progress: ${progress}%`);
-      },
-      onRefineProgress: (progress) => {
-        console.log(`Refine progress: ${progress}%`);
-      },
     });
 
-    // Upload the refined model to Supabase storage and save to database
-    let storedModelUrl = null;
-    let savedArtifact = null;
-
-    if (result.refined.model_urls?.glb) {
-      try {
-        // Fetch the refined GLB file
-        const modelResponse = await fetch(result.refined.model_urls.glb);
-        if (modelResponse.ok) {
-          const modelBlob = await modelResponse.blob();
-
-          // Generate a unique filename
-          const timestamp = Date.now();
-          const fileName = `model_${timestamp}.glb`;
-
-          // Upload to Supabase storage
-          storedModelUrl = await upload3DModel(modelBlob, fileName);
-
-          if (storedModelUrl) {
-            // Save to database
-            savedArtifact = await saveModelArtifact(
-              "Frankie Li",
-              storedModelUrl,
-              prompt
-            );
-            console.log("Model saved successfully:", savedArtifact);
-          }
-        }
-      } catch (uploadError) {
-        console.error("Error uploading model:", uploadError);
-        // Don't fail the entire request if upload fails
-      }
-    }
-
+    // Return task ID immediately so frontend can poll for progress
     return NextResponse.json({
       success: true,
-      preview: {
-        modelUrls: result.preview.model_urls,
-        status: result.preview.status,
-      },
-      refined: {
-        modelUrls: result.refined.model_urls,
-        status: result.refined.status,
-      },
-      // Include the stored model info
-      stored: {
-        modelUrl: storedModelUrl,
-        artifact: savedArtifact,
-      },
+      previewTaskId,
+      message: "3D generation started. Poll for progress using the task ID.",
     });
   } catch (error) {
     console.error("Error generating 3D model:", error);
@@ -115,6 +67,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const taskId = searchParams.get("taskId");
     const modelUrl = searchParams.get("modelUrl");
+    const action = searchParams.get("action");
 
     // If modelUrl is provided, proxy the model file
     if (modelUrl) {
@@ -149,6 +102,55 @@ export async function GET(request: NextRequest) {
     }
 
     const taskStatus = await meshyClient.getTaskStatus(taskId);
+
+    const previewSuccess =
+      action === "refine" &&
+      taskStatus.status === "SUCCEEDED" &&
+      taskStatus.model_urls;
+    if (previewSuccess) {
+      const refineTaskId = await meshyClient.createTextTo3DRefine(taskId);
+      return NextResponse.json({
+        refineTaskId,
+        previewStatus: taskStatus,
+        previewUrl: taskStatus.model_urls?.glb,
+      });
+    }
+
+    // If this is a refine task that succeeded, save to Supabase
+    const refineSuccess =
+      taskStatus.status === "SUCCEEDED" &&
+      taskStatus.model_urls?.glb &&
+      searchParams.get("isRefine") === "true";
+    if (refineSuccess) {
+      try {
+        const modelResponse = await fetch(taskStatus.model_urls?.glb || "");
+        if (modelResponse.ok) {
+          const modelBlob = await modelResponse.blob();
+          const timestamp = Date.now();
+          const fileName = `model_${timestamp}.glb`;
+
+          const storedModelUrl = await upload3DModel(modelBlob, fileName);
+          if (storedModelUrl) {
+            const savedArtifact = await saveModelArtifact(
+              "User Generated",
+              storedModelUrl,
+              searchParams.get("prompt") || "3D Model"
+            );
+            console.log("Model saved successfully:", savedArtifact);
+
+            return NextResponse.json({
+              ...taskStatus,
+              stored: {
+                modelUrl: storedModelUrl,
+                artifact: savedArtifact,
+              },
+            });
+          }
+        }
+      } catch (uploadError) {
+        console.error("Error uploading model:", uploadError);
+      }
+    }
 
     return NextResponse.json({
       id: taskStatus.id,

@@ -13,13 +13,9 @@ import * as THREE from "three";
 import Modal from "@/components/shared/Modal";
 import { setBrightness } from "@/utils";
 import { motion } from "framer-motion";
+import placeholderPfp from "../../public/gradient.jpg";
 import Image from "next/image";
 import { ModelArtifact } from "@/lib/supabase/queries";
-
-// Utility function to create proxied URLs to avoid CORS issues
-export function createProxiedUrl(originalUrl: string): string {
-  return `/api/generate-3d?modelUrl=${encodeURIComponent(originalUrl)}`;
-}
 
 function Model({
   url,
@@ -129,6 +125,8 @@ function ModalMainContent({
     });
   };
 
+  const photoOfMe =
+    "https://media.licdn.com/dms/image/v2/D5603AQEuW4OFn35Elg/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1718167245956?e=2147483647&v=beta&t=QnWhC0QGKLPqx4sglJ0pi6EuEkxlVebNOSyTOji9_CE";
   const glassmorphic2 = "bg-white/50 backdrop-blur-md";
 
   return (
@@ -137,7 +135,9 @@ function ModalMainContent({
     >
       <div className="absolute top-0 left-0 m-2 p-1.5 px-2.5 rounded-lg flex items-center gap-2 bg-gray-200">
         <Image
-          src="https://media.licdn.com/dms/image/v2/D5603AQEuW4OFn35Elg/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1718167245956?e=2147483647&v=beta&t=QnWhC0QGKLPqx4sglJ0pi6EuEkxlVebNOSyTOji9_CE"
+          src={
+            selectedArtifact?.name === "Frankie Li" ? photoOfMe : placeholderPfp
+          }
           alt={selectedArtifact?.name || "Name"}
           className="rounded-full"
           width={PFP_DIMENSIONS}
@@ -257,7 +257,7 @@ export default function ModelViewer({
             const col = i % columns;
             const position: [number, number, number] = [
               col * spacing,
-              0, // Y will be adjusted by yOffset in Model component
+              0,
               row * spacing,
             ];
             return (
