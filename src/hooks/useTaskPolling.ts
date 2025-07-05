@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback } from "react";
 import { usePollingStore } from "@/stores/pollingStore";
+import { modelHistory } from "@/utils/modelHistory";
 
 interface UseTaskPollingProps {
   onModelUrl: (url: string | null) => void;
@@ -18,7 +19,7 @@ export function useTaskPolling({
     setError,
     setSuccessMessage,
     setIsGenerating,
-    reset,
+    currentHistoryId,
   } = usePollingStore();
 
   const previewPollRef = useRef<NodeJS.Timeout | null>(null);
@@ -81,7 +82,12 @@ export function useTaskPolling({
             previewPollRef.current = null;
           }
 
-          if (data.modelUrls?.glb) onPreviewUrl(data.modelUrls.glb);
+          if (data.modelUrls?.glb) {
+            onPreviewUrl(data.modelUrls.glb);
+            // Update localStorage with preview URL
+            if (currentHistoryId)
+              modelHistory.updatePreview(currentHistoryId, data.modelUrls.glb);
+          }
 
           setProgress({ ...progress, preview: 100 });
 
@@ -106,7 +112,13 @@ export function useTaskPolling({
           refinePollRef.current = null;
         }
 
-        if (data.modelUrls?.glb) onModelUrl(data.modelUrls.glb);
+        // Update with final model URL from Supabase
+        if (data.stored?.modelUrl) {
+          onModelUrl(data.stored.modelUrl);
+          // Update localStorage with final model URL
+          if (currentHistoryId)
+            modelHistory.updateModel(currentHistoryId, data.stored.modelUrl);
+        } else if (data.modelUrls?.glb) onModelUrl(data.modelUrls.glb);
 
         if (data.stored?.artifact)
           setSuccessMessage("3D model generated and saved successfully!");
@@ -130,6 +142,7 @@ export function useTaskPolling({
       setError,
       setIsGenerating,
       setSuccessMessage,
+      currentHistoryId,
     ]
   );
 
@@ -157,6 +170,5 @@ export function useTaskPolling({
   return {
     startPolling,
     clearAllPolling,
-    reset,
   };
 }

@@ -32,7 +32,7 @@ export default function ArtifactsDisplay({}: {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-lg">Loading 3D models...</div>
+        <div className="text-lg">Loading...</div>
       </div>
     );
   }
@@ -45,9 +45,5 @@ export default function ArtifactsDisplay({}: {
     );
   }
 
-  return (
-    <div>
-      <ModelViewer artifacts={artifacts} />
-    </div>
-  );
+  return <ModelViewer artifacts={artifacts} />;
 }

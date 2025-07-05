@@ -1,46 +1,35 @@
 import { create } from "zustand";
 
-interface PollingState {
-  // State properties
+interface PollingStore {
   prompt: string;
-  progress: { preview: number; refine: number };
-  isGenerating: boolean;
-  error: string | null;
-  successMessage: string | null;
-
-  // State setters
   setPrompt: (prompt: string) => void;
-  setProgress: (progress: { preview: number; refine: number }) => void;
-  setIsGenerating: (isGenerating: boolean) => void;
+  error: string | null;
   setError: (error: string | null) => void;
-  setSuccessMessage: (msg: string | null) => void;
 
-  // Utility functions
-  reset: () => void;
+  isGenerating: boolean;
+  setIsGenerating: (isGenerating: boolean) => void;
+  successMessage: string | null;
+  setSuccessMessage: (message: string | null) => void;
+  progress: { preview: number; refine: number };
+  setProgress: (progress: { preview: number; refine: number }) => void;
+
+  currentHistoryId: string | null;
+  setCurrentHistoryId: (id: string | null) => void;
 }
 
-export const usePollingStore = create<PollingState>((set) => ({
-  // Initial state values
+export const usePollingStore = create<PollingStore>((set) => ({
   prompt: "",
-  progress: { preview: 0, refine: 0 },
-  isGenerating: false,
-  error: null,
-  successMessage: null,
-
-  // State setters
   setPrompt: (prompt) => set({ prompt }),
-  setProgress: (progress) => set({ progress }),
-  setIsGenerating: (isGenerating) => set({ isGenerating }),
+  error: null,
   setError: (error) => set({ error }),
-  setSuccessMessage: (msg) => set({ successMessage: msg }),
 
-  // Utility functions
-  reset: () =>
-    set({
-      prompt: "",
-      progress: { preview: 0, refine: 0 },
-      isGenerating: false,
-      error: null,
-      successMessage: null,
-    }),
+  isGenerating: false,
+  setIsGenerating: (isGenerating) => set({ isGenerating }),
+  successMessage: null,
+  setSuccessMessage: (successMessage) => set({ successMessage }),
+  progress: { preview: 0, refine: 0 },
+  setProgress: (progress) => set({ progress }),
+
+  currentHistoryId: null,
+  setCurrentHistoryId: (currentHistoryId) => set({ currentHistoryId }),
 }));
