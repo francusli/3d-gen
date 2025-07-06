@@ -1,137 +1,39 @@
 "use client";
 
-import React, { Suspense, useState, useRef, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
-import {
-  useGLTF,
-  Center,
-  Environment,
-  Clone,
-  OrbitControls,
-} from "@react-three/drei";
+import { Center, Environment, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import Modal from "@/components/shared/Modal";
-import { setBrightness } from "@/utils";
 import { motion } from "framer-motion";
 import placeholderPfp from "../../public/gradient.jpg";
 import Image from "next/image";
 import { ModelArtifact } from "@/lib/supabase/queries";
+import { formatDate } from "@/utils/format";
+import { glassmorphic2 } from "./shared/sharedStyles";
+import { Model } from "./shared/Model";
 
-function Model({
-  url,
-  position,
-  onClick,
-  variant = "grid",
-}: {
-  url: string;
-  position: [number, number, number];
-  onClick?: () => void;
-  variant?: "grid" | "modal";
-}) {
-  const { scene } = useGLTF(url);
-  const [hovered, setHovered] = useState(false);
-  const groupRef = useRef<THREE.Group>(null);
-  const enableBrightness = variant === "grid";
-  const targetSize = 2.5;
-
-  // Deep clone the scene and all materials for this instance
-  const localScene = React.useMemo(() => {
-    const clone = scene.clone(true);
-    clone.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh && (child as THREE.Mesh).material) {
-        const mesh = child as THREE.Mesh;
-        const material = mesh.material;
-        if (Array.isArray(material)) {
-          mesh.material = material.map((mat) => mat.clone());
-        } else mesh.material = material.clone();
-      }
-    });
-    return clone;
-  }, [scene]);
-
-  // Set the scale of the model to the target size to have uniform size
-  const { modelScale, yOffset } = React.useMemo(() => {
-    if (!scene) return { modelScale: 1, yOffset: 0 };
-
-    // Calculate the bounding box of the original scene
-    const boundingBox = new THREE.Box3().setFromObject(scene);
-    const size = boundingBox.getSize(new THREE.Vector3());
-
-    // Calculate scale factor based on the largest dimension
-    const maxDimension = Math.max(size.x, size.y, size.z);
-    if (maxDimension === 0) return { modelScale: 1, yOffset: 0 };
-
-    const scaleFactor = targetSize / maxDimension;
-
-    // Calculate Y offset to place model bottom on ground plane
-    // This creates a consistent "floor" that all models sit on
-    const minY = boundingBox.min.y;
-    const yOffset = -minY * scaleFactor;
-
-    return { modelScale: scaleFactor, yOffset };
-  }, [scene, targetSize]);
-
-  // Update brightness on hover state change for grid view
-  useEffect(() => {
-    if (groupRef.current && groupRef.current.children[0]) {
-      if (!enableBrightness) return;
-      setBrightness(groupRef.current.children[0], hovered);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene, hovered]);
-
-  return (
-    <group
-      ref={groupRef}
-      position={[position[0], position[1] + yOffset, position[2]]}
-      scale={[modelScale, modelScale, modelScale]}
-      onPointerOver={(e) => {
-        e.stopPropagation();
-        setHovered(true);
-        document.body.style.cursor = "pointer";
-      }}
-      onPointerOut={(e) => {
-        e.stopPropagation();
-        setHovered(false);
-        document.body.style.cursor = "default";
-      }}
-      onClick={(e) => {
-        e.stopPropagation();
-        if (onClick) onClick();
-      }}
-    >
-      <Clone object={localScene} />
-    </group>
-  );
+// Preload all models when component mounts
+function preloadModels(urls: string[]) {
+  urls.forEach((url) => {
+    useGLTF.preload(url);
+  });
 }
 
 // Extracted main content for the modal
-function ModalMainContent({
+export function ModalMainContent({
   selectedArtifact,
-  MAX_WIDTH,
 }: {
   selectedArtifact: ModelArtifact | null;
-  MAX_WIDTH: number;
 }) {
   const PFP_DIMENSIONS = 32;
 
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
   const photoOfMe =
     "https://media.licdn.com/dms/image/v2/D5603AQEuW4OFn35Elg/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1718167245956?e=2147483647&v=beta&t=QnWhC0QGKLPqx4sglJ0pi6EuEkxlVebNOSyTOji9_CE";
-  const glassmorphic2 = "bg-white/50 backdrop-blur-md";
 
   return (
     <div
-      className={`w-[${MAX_WIDTH}px] h-[${MAX_WIDTH}px] rounded-lg border-md ${glassmorphic2}`}
+      className={`w-[600px] h-[600px] rounded-lg border-md ${glassmorphic2}`}
     >
       <div className="absolute top-0 left-0 m-2 p-1.5 px-2.5 rounded-lg flex items-center gap-2 bg-gray-200">
         <Image
@@ -174,14 +76,13 @@ function ModalMainContent({
   );
 }
 
-function ModalWithPanels({
+export function ModalWithPanels({
   onClose,
   selectedArtifact,
 }: {
   onClose: () => void;
   selectedArtifact: ModelArtifact | null;
 }) {
-  const MAX_WIDTH = 600;
   const open = !!selectedArtifact;
 
   const animateOpenDown = { y: 0, opacity: 1 };
@@ -196,17 +97,14 @@ function ModalWithPanels({
       className="flex flex-col gap-4 items-stretch relative"
     >
       {/* Main Content */}
-      <ModalMainContent
-        selectedArtifact={selectedArtifact}
-        MAX_WIDTH={MAX_WIDTH}
-      />
+      <ModalMainContent selectedArtifact={selectedArtifact} />
 
       {/* Bottom Panel */}
       <motion.div
         initial={animateClosedDown}
         animate={open ? animateOpenDown : animateClosedDown}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className={`rounded-lg border-md flex flex-col justify-center p-3 gap-1 w-fit m-auto ${glassmorphic2} max-w-[${MAX_WIDTH}px]`}
+        className={`rounded-lg border-md flex flex-col justify-center p-3 gap-1 w-fit m-auto ${glassmorphic2} max-w-[600px]`}
       >
         <p className="text-sm -mt-1 text-gray-600">Prompt</p>
         <p className="text-md">
@@ -226,6 +124,12 @@ export default function ModelViewer({
   const spacing = 6;
   const [selectedArtifact, setSelectedArtifact] =
     useState<ModelArtifact | null>(null);
+
+  // Preload all models on mount or when artifacts change
+  useEffect(() => {
+    const urls = artifacts.map((a) => a.model_url);
+    preloadModels(urls);
+  }, [artifacts]);
 
   // Calculate the center of the grid to position camera optimally
   const gridCenter = React.useMemo(() => {
@@ -269,7 +173,6 @@ export default function ModelViewer({
               />
             );
           })}
-          x
           <Environment preset="studio" />
           <OrbitControls
             target={gridCenter as [number, number, number]}

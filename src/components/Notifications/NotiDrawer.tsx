@@ -2,76 +2,78 @@ import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { glassmorphic1 } from "@/components/shared/sharedStyles";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, useGLTF } from "@react-three/drei";
+import { Center, OrbitControls } from "@react-three/drei";
 import { createProxiedUrl } from "@/utils/threejs";
+import { Model } from "@/components/shared/Model";
 import { usePollingStore } from "@/stores/pollingStore";
-import {
-  modelHistory,
-  type ModelHistoryItem as ModelHistoryItemType,
-} from "@/utils/modelHistory";
-import { Trash2, Clock } from "lucide-react";
+import { type ModelHistoryItem as ModelHistoryItemType } from "@/utils/modelHistory";
+import { Trash2 } from "lucide-react";
 import { useState } from "react";
-
-function Model({ url }: { url: string }) {
-  const { scene } = useGLTF(url);
-  return <primitive object={scene} />;
-}
+import { useAnimatedRoundedValue } from "@/hooks/useAnims";
+import { formatDate } from "@/utils/format";
+import { ModalWithPanels } from "@/components/ModelViewer";
+import { ModelArtifact } from "@/lib/supabase/queries";
 
 function ModelHistoryItem({
   item,
   onDelete,
+  onClick,
 }: {
   item: ModelHistoryItemType;
   onDelete: (id: string) => void;
+  onClick: (item: ModelHistoryItemType) => void;
 }) {
   const modelUrl = item.modelUrl || item.previewUrl;
-  const formattedDate = new Date(item.date).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formattedDate = formatDate(item.date);
 
   return (
-    <div className="border-b border-gray-200 pb-3 mb-3 last:border-0">
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-gray-800 line-clamp-2">
+    <div className="relative group">
+      <div
+        onClick={() => onClick(item)}
+        className="flex border-1 border-gray-200 justify-between cursor-pointer hover:shadow-sm items-center mb-2 gap-3 bg-white/80 py-2 px-2 rounded-lg transition-all duration-200 ease-in-out"
+      >
+        <div className="w-16 h-16">
+          {modelUrl ? (
+            <div className="bg-gray-100 rounded-lg overflow-hidden w-full h-full">
+              <Canvas camera={{ position: [0, 0, 2] }}>
+                <ambientLight intensity={0.5} />
+                <directionalLight position={[5, 5, 5]} />
+                <Center>
+                  <Model
+                    url={createProxiedUrl(modelUrl)}
+                    variant="thumbnail"
+                    position={[0, 0, 0]}
+                  />
+                </Center>
+                <OrbitControls enableZoom={false} />
+              </Canvas>
+            </div>
+          ) : (
+            <div className="bg-gray-200 rounded-lg w-full h-full relative overflow-hidden animate-shimmer" />
+          )}
+        </div>
+        <div className="flex-1 flex flex-col gap-1 justify-center">
+          <p className="text-sm font-medium text-gray-800 line-clamp-2 leading-tight">
             {item.prompt}
           </p>
-          <div className="flex items-center gap-2 mt-1">
-            <Clock size={12} className="text-gray-500" />
-            <span className="text-xs text-gray-500">{formattedDate}</span>
-            {item.status === "generating" && (
-              <span className="text-xs font-medium">Generating...</span>
-            )}
-            {item.status === "preview" && (
-              <span className="text-xs font-medium">Preview</span>
-            )}
-            {item.status === "completed" && (
-              <span className="text-xs font-medium">Completed</span>
-            )}
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-500">{formattedDate}</p>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(item.id);
+              }}
+              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded transition-colors z-10 bg-white cursor-pointer group/button"
+              aria-label="Delete item"
+            >
+              <Trash2
+                size={14}
+                className="text-gray-500 group-hover/button:text-red-500 transition-colors"
+              />
+            </button>
           </div>
         </div>
-        <button
-          onClick={() => onDelete(item.id)}
-          className="ml-2 p-1 hover:bg-gray-200 rounded transition-colors"
-          aria-label="Delete item"
-        >
-          <Trash2 size={14} className="text-gray-500" />
-        </button>
       </div>
-
-      {modelUrl && (
-        <div className="w-full h-32 bg-gray-50 rounded-lg overflow-hidden">
-          <Canvas camera={{ position: [0, 0, 2] }}>
-            <ambientLight intensity={0.5} />
-            <directionalLight position={[5, 5, 5]} />
-            <Model url={createProxiedUrl(modelUrl)} />
-            <OrbitControls enableZoom={false} />
-          </Canvas>
-        </div>
-      )}
     </div>
   );
 }
@@ -130,23 +132,26 @@ function ProgressBar({ progress, isGenerating }: ProgressBarProps) {
     statusText = "Creating preview...";
   }
 
-  if (!showProgress || !isGenerating) return null;
+  const rounded = useAnimatedRoundedValue(progressValue);
 
+  if (!showProgress || !isGenerating) return null;
   return (
     <motion.div className="mb-3 flex flex-col items-center bg-white p-2 rounded-t-xl shadow-sm rounded-b-sm">
       <AnimatePresence mode="wait" initial={false}>
-        {statusText && (
+        <div className="flex items-center justify-between gap-2 mb-2 px-2 w-full">
           <motion.p
-            key={statusText}
-            className="mb-2 text-base font-medium text-gray-700 mr-auto px-2"
+            className="text-base font-medium text-gray-700"
+            animate={{ opacity: statusText ? 1 : 0, y: 0 }}
             initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
           >
-            {statusText}
+            {statusText || "\u00A0"}
           </motion.p>
-        )}
+          <motion.p className="text-base font-medium text-gray-700">
+            <motion.span>{rounded}</motion.span>%
+          </motion.p>
+        </div>
       </AnimatePresence>
       <div
         className="w-full h-4 rounded-full relative overflow-hidden"
@@ -189,23 +194,47 @@ interface NotiDrawerProps {
 }
 
 export function NotiDrawer({ open, anchorRef, onClose }: NotiDrawerProps) {
-  const [history, setHistory] = useState<ModelHistoryItemType[]>([]);
+  const [selectedArtifact, setSelectedArtifact] =
+    useState<ModelArtifact | null>(null);
+  // const [history, setHistory] = useState<ModelHistoryItemType[]>([]);
+  // FAKE DATA for testing: always show one item
+  const history: ModelHistoryItemType[] = [
+    {
+      id: "038a10c7-fbac-4680-87b4-fd43938b3a0c",
+      prompt:
+        "Create a low poly tomato with a shiny red surface, green stem, and simple geometry. The model should be suitable for mobile games and have a cartoonish style. Please avoid too many polygons and keep the shape recognizable as a tomato. This prompt is intentionally long to test text wrapping and overflow handling in the notification drawer UI.",
+      modelUrl:
+        "https://besdrhejpveqhrvhiref.supabase.co/storage/v1/object/public/3d-assets//refined-model.glb",
+      previewUrl: null,
+      date: Date.now(),
+      status: "completed",
+    },
+    {
+      id: "fake-id-2",
+      prompt:
+        "Design a futuristic robot with sleek metallic armor, glowing blue eyes, and articulated joints. The robot should have a humanoid form with smooth curves and sharp angles, suitable for sci-fi games or animations. Include details like circuit patterns on the surface and a transparent chest panel showing internal components.",
+      modelUrl: null,
+      previewUrl: null,
+      date: Date.now() - 86400000, // 1 day ago
+      status: "completed",
+    },
+  ];
   const progress = usePollingStore((state) => state.progress);
   const isGenerating = usePollingStore((state) => state.isGenerating);
   const drawerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (open) setHistory(modelHistory.getAll());
-  }, [open]);
+  // useEffect(() => {
+  //   if (open) setHistory(modelHistory.getAll());
+  // }, [open]);
 
-  useEffect(() => {
-    if (isGenerating && open) {
-      const interval = setInterval(() => {
-        setHistory(modelHistory.getAll());
-      }, 2000);
-      return () => clearInterval(interval);
-    }
-  }, [isGenerating, open]);
+  // useEffect(() => {
+  //   if (isGenerating && open) {
+  //     const interval = setInterval(() => {
+  //       setHistory(modelHistory.getAll());
+  //     }, 2000);
+  //     return () => clearInterval(interval);
+  //   }
+  // }, [isGenerating, open]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -227,24 +256,44 @@ export function NotiDrawer({ open, anchorRef, onClose }: NotiDrawerProps) {
   }, [open, onClose, anchorRef]);
 
   const handleDelete = (id: string) => {
-    modelHistory.delete(id);
-    setHistory(modelHistory.getAll());
+    // modelHistory.delete(id);
+    // setHistory(modelHistory.getAll());
+  };
+
+  const convertToModelArtifact = (
+    item: ModelHistoryItemType
+  ): ModelArtifact => {
+    return {
+      id: item.id,
+      name: "Generated Model", // Default name since ModelHistoryItem doesn't have one
+      date: new Date(item.date).toISOString(),
+      model_url: item.modelUrl || item.previewUrl || "",
+      prompt: item.prompt,
+    };
+  };
+
+  const handleItemClick = (item: ModelHistoryItemType) => {
+    if (item.modelUrl || item.previewUrl) {
+      setSelectedArtifact(convertToModelArtifact(item));
+    }
   };
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      {open && (
-        <motion.div
-          ref={drawerRef}
-          className={`${glassmorphic1} absolute right-0 mt-16 mr-6 w-80 rounded-2xl shadow-lg p-2 flex flex-col z-50`}
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.15, ease: "easeInOut" }}
-          style={{ maxHeight: MAX_HEIGHT_NOTIFICATIONS }}
-        >
-          <ProgressBar progress={progress} isGenerating={isGenerating} />
-          <div className="overflow-y-auto flex-1">
+    <>
+      <AnimatePresence mode="wait" initial={false}>
+        {open && (
+          <motion.div
+            ref={drawerRef}
+            layout
+            transition={{ type: "spring", stiffness: 400, damping: 40 }}
+            className={`${glassmorphic1} absolute right-0 mt-16 mr-6 w-80 rounded-2xl shadow-lg p-2 flex flex-col z-50`}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            style={{ maxHeight: MAX_HEIGHT_NOTIFICATIONS }}
+          >
+            <ProgressBar progress={progress} isGenerating={isGenerating} />
+
             {history.length === 0 ? (
               <p className="text-gray-500 text-center py-8">
                 You have not created anything yet.
@@ -255,12 +304,19 @@ export function NotiDrawer({ open, anchorRef, onClose }: NotiDrawerProps) {
                   key={item.id}
                   item={item}
                   onDelete={handleDelete}
+                  onClick={handleItemClick}
                 />
               ))
             )}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal for the selected model */}
+      <ModalWithPanels
+        selectedArtifact={selectedArtifact}
+        onClose={() => setSelectedArtifact(null)}
+      />
+    </>
   );
 }

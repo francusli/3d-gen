@@ -93,7 +93,13 @@ export function useTaskPolling({
 
           // Start refine process
           const refineResponse = await fetch(
-            `/api/generate-3d?taskId=${taskId}&action=refine`
+            `/api/generate-3d?taskId=${taskId}&action=refine${
+              currentHistoryId ? `&id=${currentHistoryId}` : ""
+            }${
+              originalPrompt
+                ? `&prompt=${encodeURIComponent(originalPrompt)}`
+                : ""
+            }`
           );
           const refineData = await refineResponse.json();
 

@@ -12,6 +12,32 @@
   --font-mono: var(--font-geist-mono);
 }
 
+@theme {
+  --animate-shimmer: shimmer 4s linear infinite;
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    #f1f5f9 0%,
+    #e2e8f0 25%,
+    #f8fafc 50%,
+    #e2e8f0 75%,
+    #f1f5f9 100%
+  );
+  background-size: 200% 200%;
+  animation: shimmer 4s linear infinite;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

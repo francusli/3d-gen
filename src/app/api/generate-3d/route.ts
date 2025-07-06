@@ -17,7 +17,7 @@ const meshyClient = new MeshyClient({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { prompt, negativePrompt, artStyle, shouldRemesh = true } = body;
+    const { id, prompt, negativePrompt, artStyle, shouldRemesh = true } = body;
 
     if (!prompt) {
       return NextResponse.json(
@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       previewTaskId,
+      id,
       message: "3D generation started. Poll for progress using the task ID.",
     });
   } catch (error) {
@@ -113,6 +114,8 @@ export async function GET(request: NextRequest) {
         refineTaskId,
         previewStatus: taskStatus,
         previewUrl: taskStatus.model_urls?.glb,
+        id: searchParams.get("id"),
+        prompt: searchParams.get("prompt"),
       });
     }
 
@@ -132,6 +135,7 @@ export async function GET(request: NextRequest) {
           const storedModelUrl = await upload3DModel(modelBlob, fileName);
           if (storedModelUrl) {
             const savedArtifact = await saveModelArtifact(
+              searchParams.get("id"),
               "User Generated",
               storedModelUrl,
               searchParams.get("prompt") || "3D Model"

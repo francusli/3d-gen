@@ -54,6 +54,7 @@ export default function PromptSection({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          id: historyId,
           prompt,
           shouldRemesh: true,
         }),

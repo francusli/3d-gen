@@ -60,6 +60,7 @@ export async function upload3DModel(
 
 // Save model artifact to database
 export async function saveModelArtifact(
+  id: string | null | undefined,
   name: string,
   modelUrl: string,
   prompt: string
@@ -68,6 +69,7 @@ export async function saveModelArtifact(
     const { data, error } = await supabase
       .from("model_artifacts")
       .insert({
+        id: id ?? undefined,
         name,
         model_url: modelUrl,
         prompt,

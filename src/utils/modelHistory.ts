@@ -26,7 +26,7 @@ export const modelHistory = {
   },
 
   add(prompt: string): string {
-    const id = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const id = crypto.randomUUID();
     const newItem: ModelHistoryItem = {
       id,
       modelUrl: null,
