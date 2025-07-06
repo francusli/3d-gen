@@ -1,85 +1,56 @@
 /**
- * Returns an array of grid positions for artifacts, randomized within concentric rings from the grid center.
- * @template T - The type of artifact.
+ * Returns stable grid positions for artifacts based on their IDs.
+ * Maintains consistent positioning when new artifacts are added.
+ * @template T - The type of artifact with an 'id' property.
  * @param {T[]} artifacts - The array of artifacts to position.
  * @param {number} columns - Number of columns in the grid.
  * @param {number} spacing - Distance between grid items.
- * @returns {{ position: [number, number, number]; index: number }[]} Array of positions and their original indices.
+ * @param {Map<string, { position: [number, number, number]; index: number }>} positionMap - Map to store artifact positions.
+ * @param {{ current: number }} nextIndexRef - Reference to the next available index.
+ * @returns {{ position: [number, number, number]; index: number; artifactId: string }[]} Array of stable positions.
  */
-export function getRandomizedGridPositions<T = unknown>(
+export function getStableGridPositions<T extends { id: string }>(
   artifacts: T[],
   columns: number,
-  spacing: number
-) {
-  if (artifacts.length === 0) return [];
-
-  // Generate all possible grid positions
+  spacing: number,
+  positionMap: Map<
+    string,
+    { position: [number, number, number]; index: number }
+  >,
+  nextIndexRef: { current: number }
+): Array<{
+  position: [number, number, number];
+  index: number;
+  artifactId: string;
+}> {
   const positions: Array<{
     position: [number, number, number];
     index: number;
+    artifactId: string;
   }> = [];
-  artifacts.forEach((_, i) => {
-    const row = Math.floor(i / columns);
-    const col = i % columns;
+
+  artifacts.forEach((artifact) => {
+    let positionData = positionMap.get(artifact.id);
+
+    // If this is a new artifact, assign it a position
+    if (!positionData) {
+      const index = nextIndexRef.current++;
+      const row = Math.floor(index / columns);
+      const col = index % columns;
+      positionData = {
+        position: [col * spacing, 0, row * spacing],
+        index: index,
+      };
+      positionMap.set(artifact.id, positionData);
+    }
+
     positions.push({
-      position: [col * spacing, 0, row * spacing],
-      index: i,
+      ...positionData,
+      artifactId: artifact.id,
     });
   });
 
-  // Calculate grid center
-  const totalRows = Math.ceil(artifacts.length / columns);
-  const centerX = ((columns - 1) * spacing) / 2;
-  const centerZ = ((totalRows - 1) * spacing) / 2;
-
-  // Sort positions by distance from center
-  const sortedPositions = [...positions].sort((a, b) => {
-    const distA = Math.sqrt(
-      Math.pow(a.position[0] - centerX, 2) +
-        Math.pow(a.position[2] - centerZ, 2)
-    );
-    const distB = Math.sqrt(
-      Math.pow(b.position[0] - centerX, 2) +
-        Math.pow(b.position[2] - centerZ, 2)
-    );
-    return distA - distB;
-  });
-
-  // Create groups by distance (rings around center)
-  const rings: Array<Array<(typeof positions)[0]>> = [];
-  let currentRing: Array<(typeof positions)[0]> = [];
-  let lastDistance = -1;
-
-  sortedPositions.forEach((pos) => {
-    const dist = Math.sqrt(
-      Math.pow(pos.position[0] - centerX, 2) +
-        Math.pow(pos.position[2] - centerZ, 2)
-    );
-
-    // If distance changed significantly, start new ring
-    if (lastDistance !== -1 && Math.abs(dist - lastDistance) > spacing * 0.5) {
-      if (currentRing.length > 0) {
-        rings.push(currentRing);
-        currentRing = [];
-      }
-    }
-
-    currentRing.push(pos);
-    lastDistance = dist;
-  });
-
-  if (currentRing.length > 0) {
-    rings.push(currentRing);
-  }
-
-  // Randomize within each ring
-  const randomizedPositions: Array<(typeof positions)[0]> = [];
-  rings.forEach((ring) => {
-    const shuffledRing = [...ring].sort(() => Math.random() - 0.5);
-    randomizedPositions.push(...shuffledRing);
-  });
-
-  return randomizedPositions;
+  return positions;
 }
 
 /**

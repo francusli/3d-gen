@@ -1,9 +1,8 @@
 "use client";
 
-import React, { Suspense, useState } from "react";
+import React, { Suspense, useState, useRef, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Center, Environment, OrbitControls } from "@react-three/drei";
-import * as THREE from "three";
 import Modal from "@/components/shared/Modal";
 import { motion } from "framer-motion";
 import placeholderPfp from "../../public/gradient.jpg";
@@ -12,7 +11,8 @@ import { ModelArtifact } from "@/lib/supabase/queries";
 import { formatDate } from "@/utils/format";
 import { glassmorphic2 } from "./shared/sharedStyles";
 import { Model } from "./shared/Model";
-import { getRandomizedGridPositions, getGridCenter } from "@/utils/positions";
+import { getGridCenter, getStableGridPositions } from "@/utils/positions";
+import { CameraController } from "./shared/CameraController";
 
 // Extracted main content for the modal
 export function ModalMainContent({
@@ -119,17 +119,69 @@ export default function ModelViewer({
   const [selectedArtifact, setSelectedArtifact] =
     useState<ModelArtifact | null>(null);
 
-  // Calculate grid positions with randomized order
-  const gridPositions = React.useMemo(
-    () => getRandomizedGridPositions(artifacts, columns, spacing),
-    [artifacts, columns, spacing]
-  );
+  // Store artifact positions based on their IDs to maintain stability
+  const positionMapRef = useRef<
+    Map<string, { position: [number, number, number]; index: number }>
+  >(new Map());
+  const nextIndexRef = useRef(0);
+
+  // Track if this is the initial load
+  const isInitialLoadRef = useRef(true);
+  const previousArtifactCountRef = useRef(0);
+
+  // State for camera movement
+  const [cameraTarget, setCameraTarget] = useState<{
+    position: [number, number, number] | null;
+    shouldMove: boolean;
+  }>({ position: null, shouldMove: false });
+
+  // Calculate stable grid positions using the utility function
+  const gridPositions = React.useMemo(() => {
+    return getStableGridPositions(
+      artifacts,
+      columns,
+      spacing,
+      positionMapRef.current,
+      nextIndexRef
+    );
+  }, [artifacts, columns, spacing]);
 
   // Calculate the center of the grid to position camera optimally
   const gridCenter = React.useMemo(
     () => getGridCenter(artifacts.length, columns, spacing),
     [artifacts.length, columns, spacing]
   );
+
+  // Detect when a new model is added and move camera to it
+  useEffect(() => {
+    // Skip camera movement on initial load
+    if (isInitialLoadRef.current && artifacts.length > 0) {
+      isInitialLoadRef.current = false;
+      previousArtifactCountRef.current = artifacts.length;
+      return;
+    }
+
+    // Check if a new artifact was added
+    if (artifacts.length > previousArtifactCountRef.current) {
+      // Find the newly added artifact (first one in the array since they're ordered by date desc)
+      const newArtifact = artifacts[0];
+      const newPosition = positionMapRef.current.get(newArtifact.id);
+
+      if (newPosition) {
+        setCameraTarget({
+          position: newPosition.position,
+          shouldMove: true,
+        });
+
+        // Reset the flag after a short delay
+        setTimeout(() => {
+          setCameraTarget((prev) => ({ ...prev, shouldMove: false }));
+        }, 100);
+      }
+    }
+
+    previousArtifactCountRef.current = artifacts.length;
+  }, [artifacts]);
 
   return (
     <div className="w-full h-screen">
@@ -138,27 +190,29 @@ export default function ModelViewer({
         camera={{
           position: [gridCenter[0] + 10, 10, gridCenter[2] + 10],
           zoom: 55,
+          near: 0.1,
+          far: 1000,
         }}
       >
-        {gridPositions.map((gridPos, animationIndex) => {
-          const artifact = artifacts[gridPos.index];
+        {gridPositions.map((gridPos) => {
+          const artifact = artifacts.find((a) => a.id === gridPos.artifactId);
+          if (!artifact) return null;
+
           return (
             <Model
               key={artifact.id}
               url={artifact.model_url}
               position={gridPos.position}
               onClick={() => setSelectedArtifact(artifact)}
-              index={animationIndex}
+              index={gridPos.index}
             />
           );
         })}
         <Environment preset="studio" />
-        <OrbitControls
-          target={gridCenter as [number, number, number]}
-          mouseButtons={{
-            LEFT: THREE.MOUSE.PAN,
-            RIGHT: THREE.MOUSE.ROTATE,
-          }}
+        <CameraController
+          targetPosition={cameraTarget.position}
+          shouldMove={cameraTarget.shouldMove}
+          initialTarget={gridCenter as [number, number, number]}
         />
       </Canvas>
 

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Confetti from "react-confetti";
 import ArtifactsDisplay from "@/components/ArtifactsDisplay";
 import { Notifications } from "@/components/Notifications";
 import PromptSection from "@/components/PromptSection";
 import { usePollingStore } from "@/stores/pollingStore";
+import { ModelArtifact } from "@/lib/supabase/queries";
 
 const CONFETTI_DURATION = 2500;
 const confettiConfig = {
@@ -26,6 +27,11 @@ export default function Home() {
   const setSuccessMessage = usePollingStore((state) => state.setSuccessMessage);
   const [showConfetti, setShowConfetti] = useState(false);
 
+  // Store the callback to add new artifacts
+  const addNewArtifactRef = useRef<((artifact: ModelArtifact) => void) | null>(
+    null
+  );
+
   useEffect(() => {
     if (successMessage) {
       setShowConfetti(true);
@@ -42,9 +48,19 @@ export default function Home() {
     <div className="min-h-screen bg-gray-200">
       {showConfetti && <Confetti {...confettiConfig} run={showConfetti} />}
 
-      <PromptSection onModelUrl={setModelUrl} onPreviewUrl={setPreviewUrl} />
+      <PromptSection
+        onModelUrl={setModelUrl}
+        onPreviewUrl={setPreviewUrl}
+        onNewModelCreated={addNewArtifactRef.current}
+      />
       <Notifications />
-      <ArtifactsDisplay modelUrl={modelUrl} previewUrl={previewUrl} />
+      <ArtifactsDisplay
+        modelUrl={modelUrl}
+        previewUrl={previewUrl}
+        onNewModelCreated={(callback) => {
+          addNewArtifactRef.current = callback;
+        }}
+      />
     </div>
   );
 }

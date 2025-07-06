@@ -1,15 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import ModelViewer from "./ModelViewer";
 import { getAllModelArtifacts, ModelArtifact } from "@/lib/supabase/queries";
 
-export default function ArtifactsDisplay({}: {
+export default function ArtifactsDisplay({
+  onNewModelCreated,
+}: {
   modelUrl: string | null;
   previewUrl: string | null;
+  onNewModelCreated?: (callback: (artifact: ModelArtifact) => void) => void;
 }) {
   const [artifacts, setArtifacts] = useState<ModelArtifact[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Callback to add a new artifact
+  const addNewArtifact = useCallback((newArtifact: ModelArtifact) => {
+    setArtifacts((prevArtifacts) => {
+      // Check if artifact already exists to avoid duplicates
+      const exists = prevArtifacts.some((a) => a.id === newArtifact.id);
+      if (exists) return prevArtifacts;
+
+      // Add new artifact at the beginning
+      return [newArtifact, ...prevArtifacts];
+    });
+  }, []);
+
+  // If new model is created, add it to the artifacts
+  useEffect(() => {
+    onNewModelCreated?.(addNewArtifact);
+  }, [onNewModelCreated, addNewArtifact]);
 
   useEffect(() => {
     async function fetchArtifacts() {
@@ -33,5 +53,9 @@ export default function ArtifactsDisplay({}: {
     );
   }
 
-  return <ModelViewer artifacts={artifacts} />;
+  return (
+    <div className="relative w-full h-screen">
+      <ModelViewer artifacts={artifacts} />
+    </div>
+  );
 }

@@ -2,10 +2,12 @@ import { useRef, useEffect, useCallback } from "react";
 import { usePollingStore } from "@/stores";
 import { modelHistory } from "@/utils/modelHistory";
 import { useNotiStore } from "@/stores";
+import { ModelArtifact } from "@/lib/supabase/queries";
 
 interface UseTaskPollingProps {
   onModelUrl: (url: string | null) => void;
   onPreviewUrl: (url: string | null) => void;
+  onNewModelCreated?: ((artifact: ModelArtifact) => void) | null;
 }
 
 const POLL_INTERVAL = 2000;
@@ -13,6 +15,7 @@ const POLL_INTERVAL = 2000;
 export function useTaskPolling({
   onModelUrl,
   onPreviewUrl,
+  onNewModelCreated,
 }: UseTaskPollingProps) {
   const {
     progress,
@@ -58,6 +61,14 @@ export function useTaskPolling({
           ...(isRefine && { isRefine: "true" }),
           ...(originalPrompt && { prompt: originalPrompt }),
         });
+
+        // Add the current history ID to the request if it's a refine task
+        if (isRefine) {
+          const currentHistoryId = usePollingStore.getState().currentHistoryId;
+          if (currentHistoryId) {
+            params.append("id", currentHistoryId);
+          }
+        }
 
         const response = await fetch(`/api/generate-3d?${params}`);
         const data = await response.json();
@@ -132,6 +143,11 @@ export function useTaskPolling({
           if (currentHistoryId) {
             modelHistory.updateModel(currentHistoryId, data.stored.modelUrl);
           }
+
+          // Call the callback to add the new model to the grid
+          if (data.stored?.artifact && onNewModelCreated) {
+            onNewModelCreated(data.stored.artifact);
+          }
         } else if (data.modelUrls?.glb) onModelUrl(data.modelUrls.glb);
 
         if (data.stored?.artifact)
@@ -152,6 +168,7 @@ export function useTaskPolling({
       clearAllPolling,
       onModelUrl,
       onPreviewUrl,
+      onNewModelCreated,
       progress,
       setProgress,
       setError,

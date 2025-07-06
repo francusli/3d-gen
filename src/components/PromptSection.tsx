@@ -4,13 +4,16 @@ import { modelHistory } from "@/utils/modelHistory";
 import { useNotiStore } from "@/stores";
 import { ArrowUp } from "lucide-react";
 import { glassmorphic1 } from "./shared/sharedStyles";
+import { ModelArtifact } from "@/lib/supabase/queries";
 
 export default function PromptSection({
   onModelUrl,
   onPreviewUrl,
+  onNewModelCreated,
 }: {
   onModelUrl: (url: string | null) => void;
   onPreviewUrl: (url: string | null) => void;
+  onNewModelCreated?: ((artifact: ModelArtifact) => void) | null;
 }) {
   const setOpenNotis = useNotiStore((state) => state.setOpenNotis);
   const MAX_PROMPT_HEIGHT = 800;
@@ -28,6 +31,7 @@ export default function PromptSection({
   const { startPolling, clearAllPolling } = useTaskPolling({
     onModelUrl,
     onPreviewUrl,
+    onNewModelCreated,
   });
 
   const handleGenerate = async () => {
