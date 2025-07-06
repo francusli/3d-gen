@@ -153,7 +153,7 @@ export function useTaskPolling({
           setSuccessMessage("3D model generated and saved successfully!");
 
         setIsGenerating(false);
-        setOpenNotis(false);
+        setOpenNotis(true);
         setProgress((prev) => ({ ...prev, refine: 100 }));
       } catch (err) {
         // Clear intervals on error

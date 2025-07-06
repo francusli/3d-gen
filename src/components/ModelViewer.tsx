@@ -1,6 +1,7 @@
 "use client";
 
-import React, { Suspense, useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { Download } from "lucide-react";
 import { Canvas } from "@react-three/fiber";
 import { Center, Environment, OrbitControls } from "@react-three/drei";
 import Modal from "@/components/shared/Modal";
@@ -53,29 +54,64 @@ export function ModalMainContent({
   const photoOfMe =
     "https://media.licdn.com/dms/image/v2/D5603AQEuW4OFn35Elg/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1718167245956?e=2147483647&v=beta&t=QnWhC0QGKLPqx4sglJ0pi6EuEkxlVebNOSyTOji9_CE";
 
+  const downloadGLB = async (url: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+
+      // Extract filename from URL
+      const filename = url.split("/").pop() || "model.glb";
+
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+    }
+  };
+
   return (
     <div
       className={`w-[600px] h-[600px] rounded-lg border-md ${glassmorphic2}`}
     >
-      <div className="absolute top-0 left-0 m-2 p-1.5 px-2.5 rounded-lg flex items-center gap-2 bg-gray-200">
-        <Image
-          src={
-            selectedArtifact?.name === "Frankie Li" ? photoOfMe : placeholderPfp
-          }
-          alt={selectedArtifact?.name || "Name"}
-          className="rounded-full"
-          width={PFP_DIMENSIONS}
-          height={PFP_DIMENSIONS}
-        />
-        <div className="flex flex-col">
-          <p className="text-md font-medium">
-            {selectedArtifact?.name || "Unknown"}
-          </p>
-          <p className="text-sm text-gray-600">
-            {selectedArtifact?.date
-              ? formatDate(selectedArtifact.date)
-              : "Unknown date"}
-          </p>
+      <div className="absolute top-0 left-0 m-2 flex items-center justify-between w-full">
+        <div className="p-1.5 px-2.5 rounded-lg flex items-center gap-2 bg-gray-200">
+          <Image
+            src={
+              selectedArtifact?.name === "Frankie Li"
+                ? photoOfMe
+                : placeholderPfp
+            }
+            alt={selectedArtifact?.name || "Name"}
+            className="rounded-full"
+            width={PFP_DIMENSIONS}
+            height={PFP_DIMENSIONS}
+          />
+          <div className="flex flex-col">
+            <p className="text-md font-medium">
+              {selectedArtifact?.name || "Unknown"}
+            </p>
+            <p className="text-sm text-gray-600">
+              {selectedArtifact?.date
+                ? formatDate(selectedArtifact.date)
+                : "Unknown date"}
+            </p>
+          </div>
+        </div>
+        <div
+          className="mr-6 hover:bg-gray-200 rounded-lg p-1.5 z-10 transition-all duration-150"
+          onClick={async () => {
+            if (selectedArtifact?.model_url) {
+              await downloadGLB(selectedArtifact.model_url);
+            }
+          }}
+        >
+          <Download size={20} className="cursor-pointer" />
         </div>
       </div>
 
@@ -152,9 +188,6 @@ export default function ModelViewer({
     Map<string, { position: [number, number, number]; index: number }>
   >(new Map());
   const nextIndexRef = useRef(0);
-
-  // Track which models have already been loaded to prevent re-animation
-  const loadedModelsRef = useRef<Set<string>>(new Set());
 
   // Track if this is the initial load
   const isInitialLoadRef = useRef(true);
@@ -236,7 +269,6 @@ export default function ModelViewer({
               position={gridPos.position}
               onClick={() => setSelectedArtifact(artifact)}
               index={gridPos.index}
-              loadedModels={loadedModelsRef.current}
             />
           );
         })}
