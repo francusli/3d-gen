@@ -1,26 +1,28 @@
 import { useRef, useEffect, useCallback } from "react";
-import { usePollingStore } from "@/stores/pollingStore";
+import { usePollingStore } from "@/stores";
 import { modelHistory } from "@/utils/modelHistory";
+import { useNotiStore } from "@/stores";
 
 interface UseTaskPollingProps {
   onModelUrl: (url: string | null) => void;
   onPreviewUrl: (url: string | null) => void;
 }
 
+const POLL_INTERVAL = 2000;
+
 export function useTaskPolling({
   onModelUrl,
   onPreviewUrl,
 }: UseTaskPollingProps) {
-  const POLL_INTERVAL = 2000;
-
   const {
     progress,
     setProgress,
     setError,
     setSuccessMessage,
     setIsGenerating,
-    currentHistoryId,
   } = usePollingStore();
+
+  const setOpenNotis = useNotiStore((state) => state.setOpenNotis);
 
   const previewPollRef = useRef<NodeJS.Timeout | null>(null);
   const refinePollRef = useRef<NodeJS.Timeout | null>(null);
@@ -85,13 +87,17 @@ export function useTaskPolling({
           if (data.modelUrls?.glb) {
             onPreviewUrl(data.modelUrls.glb);
             // Update localStorage with preview URL
-            if (currentHistoryId)
+            const currentHistoryId =
+              usePollingStore.getState().currentHistoryId;
+            if (currentHistoryId) {
               modelHistory.updatePreview(currentHistoryId, data.modelUrls.glb);
+            }
           }
 
           setProgress({ ...progress, preview: 100 });
 
           // Start refine process
+          const currentHistoryId = usePollingStore.getState().currentHistoryId;
           const refineResponse = await fetch(
             `/api/generate-3d?taskId=${taskId}&action=refine${
               currentHistoryId ? `&id=${currentHistoryId}` : ""
@@ -122,14 +128,17 @@ export function useTaskPolling({
         if (data.stored?.modelUrl) {
           onModelUrl(data.stored.modelUrl);
           // Update localStorage with final model URL
-          if (currentHistoryId)
+          const currentHistoryId = usePollingStore.getState().currentHistoryId;
+          if (currentHistoryId) {
             modelHistory.updateModel(currentHistoryId, data.stored.modelUrl);
+          }
         } else if (data.modelUrls?.glb) onModelUrl(data.modelUrls.glb);
 
         if (data.stored?.artifact)
           setSuccessMessage("3D model generated and saved successfully!");
 
         setIsGenerating(false);
+        setOpenNotis(false);
         setProgress({ ...progress, refine: 100 });
       } catch (err) {
         // Clear intervals on error
@@ -148,7 +157,7 @@ export function useTaskPolling({
       setError,
       setIsGenerating,
       setSuccessMessage,
-      currentHistoryId,
+      setOpenNotis,
     ]
   );
 

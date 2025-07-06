@@ -31,5 +31,8 @@ export const usePollingStore = create<PollingStore>((set) => ({
   setProgress: (progress) => set({ progress }),
 
   currentHistoryId: null,
-  setCurrentHistoryId: (currentHistoryId) => set({ currentHistoryId }),
+  setCurrentHistoryId: (currentHistoryId) => {
+    console.log("setting currentHistoryId", currentHistoryId);
+    set({ currentHistoryId });
+  },
 }));

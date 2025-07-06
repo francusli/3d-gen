@@ -6,7 +6,10 @@ import { Center, OrbitControls } from "@react-three/drei";
 import { createProxiedUrl } from "@/utils/threejs";
 import { Model } from "@/components/shared/Model";
 import { usePollingStore } from "@/stores/pollingStore";
-import { type ModelHistoryItem as ModelHistoryItemType } from "@/utils/modelHistory";
+import {
+  modelHistory,
+  type ModelHistoryItem as ModelHistoryItemType,
+} from "@/utils/modelHistory";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useAnimatedRoundedValue } from "@/hooks/useAnims";
@@ -146,7 +149,7 @@ function ProgressBar({ progress, isGenerating }: ProgressBarProps) {
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
           >
-            {statusText || "\u00A0"}
+            {statusText || "Creating..."}
           </motion.p>
           <motion.p className="text-base font-medium text-gray-700">
             <motion.span>{rounded}</motion.span>%
@@ -196,45 +199,23 @@ interface NotiDrawerProps {
 export function NotiDrawer({ open, anchorRef, onClose }: NotiDrawerProps) {
   const [selectedArtifact, setSelectedArtifact] =
     useState<ModelArtifact | null>(null);
-  // const [history, setHistory] = useState<ModelHistoryItemType[]>([]);
-  // FAKE DATA for testing: always show one item
-  const history: ModelHistoryItemType[] = [
-    {
-      id: "038a10c7-fbac-4680-87b4-fd43938b3a0c",
-      prompt:
-        "Create a low poly tomato with a shiny red surface, green stem, and simple geometry. The model should be suitable for mobile games and have a cartoonish style. Please avoid too many polygons and keep the shape recognizable as a tomato. This prompt is intentionally long to test text wrapping and overflow handling in the notification drawer UI.",
-      modelUrl:
-        "https://besdrhejpveqhrvhiref.supabase.co/storage/v1/object/public/3d-assets//refined-model.glb",
-      previewUrl: null,
-      date: Date.now(),
-      status: "completed",
-    },
-    {
-      id: "fake-id-2",
-      prompt:
-        "Design a futuristic robot with sleek metallic armor, glowing blue eyes, and articulated joints. The robot should have a humanoid form with smooth curves and sharp angles, suitable for sci-fi games or animations. Include details like circuit patterns on the surface and a transparent chest panel showing internal components.",
-      modelUrl: null,
-      previewUrl: null,
-      date: Date.now() - 86400000, // 1 day ago
-      status: "completed",
-    },
-  ];
+  const [history, setHistory] = useState<ModelHistoryItemType[]>([]);
   const progress = usePollingStore((state) => state.progress);
   const isGenerating = usePollingStore((state) => state.isGenerating);
   const drawerRef = useRef<HTMLDivElement>(null);
 
-  // useEffect(() => {
-  //   if (open) setHistory(modelHistory.getAll());
-  // }, [open]);
+  useEffect(() => {
+    if (open) setHistory(modelHistory.getAll());
+  }, [open]);
 
-  // useEffect(() => {
-  //   if (isGenerating && open) {
-  //     const interval = setInterval(() => {
-  //       setHistory(modelHistory.getAll());
-  //     }, 2000);
-  //     return () => clearInterval(interval);
-  //   }
-  // }, [isGenerating, open]);
+  useEffect(() => {
+    if (isGenerating && open) {
+      const interval = setInterval(() => {
+        setHistory(modelHistory.getAll());
+      }, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [isGenerating, open]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -256,8 +237,8 @@ export function NotiDrawer({ open, anchorRef, onClose }: NotiDrawerProps) {
   }, [open, onClose, anchorRef]);
 
   const handleDelete = (id: string) => {
-    // modelHistory.delete(id);
-    // setHistory(modelHistory.getAll());
+    modelHistory.delete(id);
+    setHistory(modelHistory.getAll());
   };
 
   const convertToModelArtifact = (
@@ -273,9 +254,7 @@ export function NotiDrawer({ open, anchorRef, onClose }: NotiDrawerProps) {
   };
 
   const handleItemClick = (item: ModelHistoryItemType) => {
-    if (item.modelUrl || item.previewUrl) {
-      setSelectedArtifact(convertToModelArtifact(item));
-    }
+    if (item.modelUrl) setSelectedArtifact(convertToModelArtifact(item));
   };
 
   return (

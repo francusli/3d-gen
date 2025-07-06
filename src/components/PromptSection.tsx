@@ -1,6 +1,7 @@
 import { useTaskPolling } from "@/hooks/useTaskPolling";
-import { usePollingStore } from "@/stores/pollingStore";
+import { usePollingStore } from "@/stores";
 import { modelHistory } from "@/utils/modelHistory";
+import { useNotiStore } from "@/stores";
 import { ArrowUp } from "lucide-react";
 import { glassmorphic1 } from "./shared/sharedStyles";
 
@@ -11,12 +12,12 @@ export default function PromptSection({
   onModelUrl: (url: string | null) => void;
   onPreviewUrl: (url: string | null) => void;
 }) {
+  const setOpenNotis = useNotiStore((state) => state.setOpenNotis);
   const MAX_PROMPT_HEIGHT = 800;
   const {
     prompt,
     setPrompt,
     error,
-    successMessage,
     isGenerating,
     setIsGenerating,
     setSuccessMessage,
@@ -37,9 +38,11 @@ export default function PromptSection({
 
     // Save to localStorage immediately
     const historyId = modelHistory.add(prompt);
+    console.log("historyId", historyId);
     setCurrentHistoryId(historyId);
 
     setIsGenerating(true);
+    setOpenNotis(true);
     setError(null);
     setSuccessMessage(null);
     onModelUrl(null);
@@ -62,16 +65,16 @@ export default function PromptSection({
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok)
         throw new Error(data.error || "Failed to generate 3D model");
-      }
 
-      if (data.previewTaskId) {
-        startPolling(data.previewTaskId, prompt);
-      }
+      if (data.previewTaskId) startPolling(data.previewTaskId, prompt);
+
+      setPrompt("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       setIsGenerating(false);
+      setOpenNotis(false);
     }
   };
 
@@ -90,12 +93,6 @@ export default function PromptSection({
       {error && (
         <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
           {error}
-        </div>
-      )}
-
-      {successMessage && (
-        <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-md">
-          {successMessage}
         </div>
       )}
 
