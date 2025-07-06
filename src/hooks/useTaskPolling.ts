@@ -62,12 +62,10 @@ export function useTaskPolling({
           ...(originalPrompt && { prompt: originalPrompt }),
         });
 
-        // Add the current history ID to the request if it's a refine task
-        if (isRefine) {
-          const currentHistoryId = usePollingStore.getState().currentHistoryId;
-          if (currentHistoryId) {
-            params.append("id", currentHistoryId);
-          }
+        // Always add the current history ID to the request
+        const currentHistoryId = usePollingStore.getState().currentHistoryId;
+        if (currentHistoryId) {
+          params.append("id", currentHistoryId);
         }
 
         const response = await fetch(`/api/generate-3d?${params}`);
@@ -78,8 +76,9 @@ export function useTaskPolling({
 
         // Update progress
         if (isRefine) {
-          setProgress({ ...progress, refine: data.progress || 0 });
-        } else setProgress({ ...progress, preview: data.progress || 0 });
+          setProgress((prev) => ({ ...prev, refine: data.progress || 0 }));
+        } else
+          setProgress((prev) => ({ ...prev, preview: data.progress || 0 }));
 
         // Handle failure cases
         if (data.status === "FAILED" || data.status === "EXPIRED") {
@@ -105,7 +104,7 @@ export function useTaskPolling({
             }
           }
 
-          setProgress({ ...progress, preview: 100 });
+          setProgress((prev) => ({ ...prev, preview: 100 }));
 
           // Start refine process
           const currentHistoryId = usePollingStore.getState().currentHistoryId;
@@ -155,7 +154,7 @@ export function useTaskPolling({
 
         setIsGenerating(false);
         setOpenNotis(false);
-        setProgress({ ...progress, refine: 100 });
+        setProgress((prev) => ({ ...prev, refine: 100 }));
       } catch (err) {
         // Clear intervals on error
         clearAllPolling();

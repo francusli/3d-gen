@@ -112,6 +112,7 @@ export async function GET(request: NextRequest) {
       status: taskStatus.status,
       progress: taskStatus.progress,
       hasModelUrls: !!taskStatus.model_urls,
+      previewUrl: taskStatus.model_urls?.glb,
       modelUrlsContent: taskStatus.model_urls,
       isRefine: searchParams.get("isRefine") === "true",
       action: action,
@@ -124,6 +125,10 @@ export async function GET(request: NextRequest) {
       taskStatus.model_urls;
     if (previewSuccess) {
       console.log(`Creating refine task for preview ${taskId}`);
+
+      const idParam = searchParams.get("id");
+      const promptParam = searchParams.get("prompt");
+
       try {
         const refineTaskId = await meshyClient.createTextTo3DRefine(taskId);
         console.log(`Created refine task: ${refineTaskId}`);
@@ -131,8 +136,8 @@ export async function GET(request: NextRequest) {
           refineTaskId,
           previewStatus: taskStatus,
           previewUrl: taskStatus.model_urls?.glb,
-          id: searchParams.get("id"),
-          prompt: searchParams.get("prompt"),
+          id: idParam,
+          prompt: promptParam,
         });
       } catch (refineError) {
         console.error("Error creating refine task:", refineError);
@@ -155,6 +160,10 @@ export async function GET(request: NextRequest) {
       taskStatus.model_urls?.glb &&
       searchParams.get("isRefine") === "true";
     if (refineSuccess) {
+      // Debug: Log what we're actually getting from searchParams for refine
+      const idParam = searchParams.get("id");
+      const promptParam = searchParams.get("prompt");
+
       try {
         const modelResponse = await fetch(taskStatus.model_urls?.glb || "");
         if (modelResponse.ok) {
@@ -165,10 +174,10 @@ export async function GET(request: NextRequest) {
           const storedModelUrl = await upload3DModel(modelBlob, fileName);
           if (storedModelUrl) {
             const savedArtifact = await saveModelArtifact(
-              searchParams.get("id"),
+              idParam,
               "User Generated",
               storedModelUrl,
-              searchParams.get("prompt") || "3D Model"
+              promptParam || "3D Model"
             );
             console.log("Model saved successfully:", savedArtifact);
 

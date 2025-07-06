@@ -122,11 +122,11 @@ function ProgressBar({ progress, isGenerating }: ProgressBarProps) {
   let progressValue = 0;
   if (progress.refine > 0) {
     progressValue = 50 + progress.refine / 2;
-  } else if (progress.preview > 0) {
+  } else {
     progressValue = progress.preview / 2;
   }
 
-  let statusText = "";
+  let statusText = "Preparing model...";
   if (completed) {
     statusText = "Completed!";
   } else if (progress.refine > 0 && progress.refine < 100) {

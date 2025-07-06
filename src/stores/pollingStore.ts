@@ -11,7 +11,14 @@ interface PollingStore {
   successMessage: string | null;
   setSuccessMessage: (message: string | null) => void;
   progress: { preview: number; refine: number };
-  setProgress: (progress: { preview: number; refine: number }) => void;
+  setProgress: (
+    progress:
+      | { preview: number; refine: number }
+      | ((prev: { preview: number; refine: number }) => {
+          preview: number;
+          refine: number;
+        })
+  ) => void;
 
   currentHistoryId: string | null;
   setCurrentHistoryId: (id: string | null) => void;
@@ -28,11 +35,14 @@ export const usePollingStore = create<PollingStore>((set) => ({
   successMessage: null,
   setSuccessMessage: (successMessage) => set({ successMessage }),
   progress: { preview: 0, refine: 0 },
-  setProgress: (progress) => set({ progress }),
+  setProgress: (progress) =>
+    set((state) => ({
+      progress:
+        typeof progress === "function" ? progress(state.progress) : progress,
+    })),
 
   currentHistoryId: null,
   setCurrentHistoryId: (currentHistoryId) => {
-    console.log("setting currentHistoryId", currentHistoryId);
     set({ currentHistoryId });
   },
 }));
