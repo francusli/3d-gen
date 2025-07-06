@@ -1,8 +1,8 @@
 "use client";
 
-import React, { Suspense, useState, useEffect } from "react";
+import React, { Suspense, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { Center, Environment, OrbitControls, useGLTF } from "@react-three/drei";
+import { Center, Environment, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import Modal from "@/components/shared/Modal";
 import { motion } from "framer-motion";
@@ -12,13 +12,7 @@ import { ModelArtifact } from "@/lib/supabase/queries";
 import { formatDate } from "@/utils/format";
 import { glassmorphic2 } from "./shared/sharedStyles";
 import { Model } from "./shared/Model";
-
-// Preload all models when component mounts
-function preloadModels(urls: string[]) {
-  urls.forEach((url) => {
-    useGLTF.preload(url);
-  });
-}
+import { getRandomizedGridPositions, getGridCenter } from "@/utils/positions";
 
 // Extracted main content for the modal
 export function ModalMainContent({
@@ -125,26 +119,17 @@ export default function ModelViewer({
   const [selectedArtifact, setSelectedArtifact] =
     useState<ModelArtifact | null>(null);
 
-  // Preload all models on mount or when artifacts change
-  useEffect(() => {
-    const urls = artifacts.map((a) => a.model_url);
-    preloadModels(urls);
-  }, [artifacts]);
+  // Calculate grid positions with randomized order
+  const gridPositions = React.useMemo(
+    () => getRandomizedGridPositions(artifacts, columns, spacing),
+    [artifacts, columns, spacing]
+  );
 
   // Calculate the center of the grid to position camera optimally
-  const gridCenter = React.useMemo(() => {
-    if (artifacts.length === 0) return [0, 0, 0];
-
-    const totalRows = Math.ceil(artifacts.length / columns);
-
-    // Calculate center X position (accounting for the zigzag offset)
-    const centerX = ((columns - 1) * spacing) / 2;
-
-    // Calculate center Z position
-    const centerZ = ((totalRows - 1) * spacing) / 2;
-
-    return [centerX, 0, centerZ];
-  }, [artifacts.length, columns, spacing]);
+  const gridCenter = React.useMemo(
+    () => getGridCenter(artifacts.length, columns, spacing),
+    [artifacts.length, columns, spacing]
+  );
 
   return (
     <div className="w-full h-screen">
@@ -155,33 +140,26 @@ export default function ModelViewer({
           zoom: 55,
         }}
       >
-        <Suspense fallback={null}>
-          {artifacts.map((artifact, i) => {
-            const row = Math.floor(i / columns);
-            const col = i % columns;
-            const position: [number, number, number] = [
-              col * spacing,
-              0,
-              row * spacing,
-            ];
-            return (
-              <Model
-                key={artifact.id}
-                url={artifact.model_url}
-                position={position}
-                onClick={() => setSelectedArtifact(artifact)}
-              />
-            );
-          })}
-          <Environment preset="studio" />
-          <OrbitControls
-            target={gridCenter as [number, number, number]}
-            mouseButtons={{
-              LEFT: THREE.MOUSE.PAN,
-              RIGHT: THREE.MOUSE.ROTATE,
-            }}
-          />
-        </Suspense>
+        {gridPositions.map((gridPos, animationIndex) => {
+          const artifact = artifacts[gridPos.index];
+          return (
+            <Model
+              key={artifact.id}
+              url={artifact.model_url}
+              position={gridPos.position}
+              onClick={() => setSelectedArtifact(artifact)}
+              index={animationIndex}
+            />
+          );
+        })}
+        <Environment preset="studio" />
+        <OrbitControls
+          target={gridCenter as [number, number, number]}
+          mouseButtons={{
+            LEFT: THREE.MOUSE.PAN,
+            RIGHT: THREE.MOUSE.ROTATE,
+          }}
+        />
       </Canvas>
 
       {/* Modal for the selected model */}

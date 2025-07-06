@@ -9,33 +9,21 @@ export default function ArtifactsDisplay({}: {
   previewUrl: string | null;
 }) {
   const [artifacts, setArtifacts] = useState<ModelArtifact[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchArtifacts() {
       try {
-        setLoading(true);
         const data = await getAllModelArtifacts();
         setArtifacts(data);
       } catch (err) {
         setError("Failed to load 3D models");
         console.error("Error fetching artifacts:", err);
-      } finally {
-        setLoading(false);
       }
     }
 
     fetchArtifacts();
   }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
