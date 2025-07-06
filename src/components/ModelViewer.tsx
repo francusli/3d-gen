@@ -14,7 +14,35 @@ import { Model } from "./shared/Model";
 import { getGridCenter, getStableGridPositions } from "@/utils/positions";
 import { CameraController } from "./shared/CameraController";
 
-// Extracted main content for the modal
+function ModelScene({
+  cameraProps,
+  children,
+  controls,
+  orthographic = false,
+}: {
+  cameraProps: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  children: React.ReactNode;
+  controls?: React.ReactNode;
+  environmentIntensity?: number;
+  orthographic?: boolean;
+}) {
+  return (
+    <Canvas camera={cameraProps} orthographic={orthographic}>
+      <directionalLight
+        position={[10, 20, 10]}
+        intensity={1.2}
+        castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+      />
+      <ambientLight intensity={0.2} />
+      {children}
+      <Environment preset="studio" environmentIntensity={0.3} />
+      {controls}
+    </Canvas>
+  );
+}
+
 export function ModalMainContent({
   selectedArtifact,
 }: {
@@ -52,19 +80,19 @@ export function ModalMainContent({
       </div>
 
       {selectedArtifact && (
-        <Canvas camera={{ position: [4, 2, 14], fov: 20 }}>
-          <Suspense fallback={null}>
-            <Center>
-              <Model
-                url={selectedArtifact.model_url}
-                position={[0, 0, 0]}
-                variant="modal"
-              />
-            </Center>
-            <Environment preset="studio" />
-            <OrbitControls />
-          </Suspense>
-        </Canvas>
+        <ModelScene
+          cameraProps={{ position: [4, 2, 14], fov: 20 }}
+          orthographic={false}
+        >
+          <Center>
+            <Model
+              url={selectedArtifact.model_url}
+              position={[0, 0, 0]}
+              variant="modal"
+            />
+          </Center>
+          <OrbitControls />
+        </ModelScene>
       )}
     </div>
   );
@@ -185,14 +213,14 @@ export default function ModelViewer({
 
   return (
     <div className="w-full h-screen">
-      <Canvas
-        orthographic
-        camera={{
+      <ModelScene
+        cameraProps={{
           position: [gridCenter[0] + 10, 10, gridCenter[2] + 10],
           zoom: 55,
           near: 0.1,
           far: 1000,
         }}
+        orthographic
       >
         {gridPositions.map((gridPos) => {
           const artifact = artifacts.find((a) => a.id === gridPos.artifactId);
@@ -208,13 +236,12 @@ export default function ModelViewer({
             />
           );
         })}
-        <Environment preset="studio" />
         <CameraController
           targetPosition={cameraTarget.position}
           shouldMove={cameraTarget.shouldMove}
           initialTarget={gridCenter as [number, number, number]}
         />
-      </Canvas>
+      </ModelScene>
 
       {/* Modal for the selected model */}
       <ModalWithPanels
