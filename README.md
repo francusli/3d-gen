@@ -36,7 +36,7 @@ npm install
 
 ```env
 # Meshy AI Configuration
-NEXT_PUBLIC_MESHY_API_KEY=msy_your_api_key_here
+MESHY_API_KEY=msy_your_api_key_here
 
 # Supabase Configuration (for storing generated models)
 NEXT_PUBLIC_SUPABASE_PROJECT_ID=your_supabase_project_id_here
@@ -46,7 +46,7 @@ NEXT_PUBLIC_SUPABASE_API_KEY=your_supabase_anon_key_here
 For testing, you can use the test mode API key:
 
 ```env
-NEXT_PUBLIC_MESHY_API_KEY=msy_dummy_api_key_for_test_mode_12345678
+MESHY_API_KEY=msy_dummy_api_key_for_test_mode_12345678
 ```
 
 4. Run the development server:
@@ -110,7 +110,7 @@ This app is ready to deploy on Vercel:
 1. Push your code to GitHub
 2. Import the project in Vercel
 3. Add the following environment variables:
-   - `NEXT_PUBLIC_MESHY_API_KEY`
+   - `MESHY_API_KEY`
    - `NEXT_PUBLIC_SUPABASE_PROJECT_ID`
    - `NEXT_PUBLIC_SUPABASE_API_KEY`
 4. Deploy!

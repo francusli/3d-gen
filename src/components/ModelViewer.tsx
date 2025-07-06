@@ -153,6 +153,9 @@ export default function ModelViewer({
   >(new Map());
   const nextIndexRef = useRef(0);
 
+  // Track which models have already been loaded to prevent re-animation
+  const loadedModelsRef = useRef<Set<string>>(new Set());
+
   // Track if this is the initial load
   const isInitialLoadRef = useRef(true);
   const previousArtifactCountRef = useRef(0);
@@ -233,6 +236,7 @@ export default function ModelViewer({
               position={gridPos.position}
               onClick={() => setSelectedArtifact(artifact)}
               index={gridPos.index}
+              loadedModels={loadedModelsRef.current}
             />
           );
         })}

@@ -14,10 +14,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 The application requires a Meshy AI API key to function. Create a `.env.local` file:
 
 ```env
-NEXT_PUBLIC_MESHY_API_KEY=msy_your_api_key_here
+MESHY_API_KEY=msy_your_api_key_here
 ```
 
-For testing purposes, you can use: `NEXT_PUBLIC_MESHY_API_KEY=msy_dummy_api_key_for_test_mode_12345678`
+For testing purposes, you can use: `MESHY_API_KEY=msy_dummy_api_key_for_test_mode_12345678`
 
 ## Architecture Overview
 

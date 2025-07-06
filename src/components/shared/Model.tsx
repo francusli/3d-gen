@@ -25,16 +25,21 @@ export function Model({
   onClick,
   variant = "grid",
   index = 0,
+  loadedModels,
 }: {
   url: string;
   position: [number, number, number];
   onClick?: () => void;
   variant?: "grid" | "modal" | "thumbnail";
   index?: number;
+  loadedModels?: Set<string>;
 }) {
   const { scene } = useGLTF(url);
   const groupRef = useRef<THREE.Group>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Check if this model has already been loaded
+  const isAlreadyLoaded = loadedModels?.has(url) ?? false;
+  const [hasAnimated, setHasAnimated] = useState(isAlreadyLoaded);
 
   // Dynamic target size based on variant
   const targetSize = React.useMemo(() => {
@@ -95,8 +100,12 @@ export function Model({
     const DELAY_DURATION = 0.03;
     const SCALE_DURATION = 0.3;
 
-    if (scene && groupRef.current && variant === "grid" && !isLoaded) {
-      setIsLoaded(true);
+    if (scene && groupRef.current && variant === "grid" && !hasAnimated) {
+      // Mark this model as loaded
+      if (loadedModels) {
+        loadedModels.add(url);
+      }
+      setHasAnimated(true);
 
       gsap.set(groupRef.current.scale, {
         x: 0,
@@ -117,7 +126,17 @@ export function Model({
         ease: "back.out(1.7)",
       });
     }
-  }, [scene, position, yOffset, modelScale, variant, index, isLoaded]);
+  }, [
+    scene,
+    position,
+    yOffset,
+    modelScale,
+    variant,
+    index,
+    hasAnimated,
+    url,
+    loadedModels,
+  ]);
 
   // Don't render anything if scene hasn't loaded yet
   if (!scene) return null;
@@ -127,7 +146,9 @@ export function Model({
       ref={groupRef}
       position={[position[0], position[1] + yOffset, position[2]]}
       scale={
-        variant === "grid" ? [0, 0, 0] : [modelScale, modelScale, modelScale]
+        variant === "grid" && !hasAnimated
+          ? [0, 0, 0]
+          : [modelScale, modelScale, modelScale]
       }
       rotation={[0, Math.PI, 0]} // Rotate 180 degrees around Y-axis to face forward
       onPointerOver={(e) => {

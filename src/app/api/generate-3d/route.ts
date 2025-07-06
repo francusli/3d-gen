@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { MeshyClient } from "@/lib/meshy/client";
 import { upload3DModel, saveModelArtifact } from "@/lib/supabase/queries";
 
-const MESHY_API_KEY = process.env.NEXT_PUBLIC_MESHY_API_KEY;
+const MESHY_API_KEY = process.env.MESHY_API_KEY;
 
 const meshyClient = new MeshyClient({
   apiKey: MESHY_API_KEY || "",
@@ -28,7 +28,10 @@ export async function POST(request: NextRequest) {
 
     if (!MESHY_API_KEY) {
       return NextResponse.json(
-        { error: "Meshy API key is not configured" },
+        {
+          error:
+            "Meshy API key is not configured. Please set MESHY_API_KEY in your .env.local file",
+        },
         { status: 500 }
       );
     }
@@ -104,19 +107,46 @@ export async function GET(request: NextRequest) {
 
     const taskStatus = await meshyClient.getTaskStatus(taskId);
 
+    // Add logging for debugging
+    console.log(`Task ${taskId} status:`, {
+      status: taskStatus.status,
+      progress: taskStatus.progress,
+      hasModelUrls: !!taskStatus.model_urls,
+      modelUrlsContent: taskStatus.model_urls,
+      isRefine: searchParams.get("isRefine") === "true",
+      action: action,
+      error: taskStatus.error,
+    });
+
     const previewSuccess =
       action === "refine" &&
       taskStatus.status === "SUCCEEDED" &&
       taskStatus.model_urls;
     if (previewSuccess) {
-      const refineTaskId = await meshyClient.createTextTo3DRefine(taskId);
-      return NextResponse.json({
-        refineTaskId,
-        previewStatus: taskStatus,
-        previewUrl: taskStatus.model_urls?.glb,
-        id: searchParams.get("id"),
-        prompt: searchParams.get("prompt"),
-      });
+      console.log(`Creating refine task for preview ${taskId}`);
+      try {
+        const refineTaskId = await meshyClient.createTextTo3DRefine(taskId);
+        console.log(`Created refine task: ${refineTaskId}`);
+        return NextResponse.json({
+          refineTaskId,
+          previewStatus: taskStatus,
+          previewUrl: taskStatus.model_urls?.glb,
+          id: searchParams.get("id"),
+          prompt: searchParams.get("prompt"),
+        });
+      } catch (refineError) {
+        console.error("Error creating refine task:", refineError);
+        return NextResponse.json(
+          {
+            error:
+              refineError instanceof Error
+                ? refineError.message
+                : "Failed to create refine task",
+            previewUrl: taskStatus.model_urls?.glb,
+          },
+          { status: 500 }
+        );
+      }
     }
 
     // If this is a refine task that succeeded, save to Supabase

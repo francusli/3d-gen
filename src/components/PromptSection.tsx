@@ -42,7 +42,6 @@ export default function PromptSection({
 
     // Save to localStorage immediately
     const historyId = modelHistory.add(prompt);
-    console.log("historyId", historyId);
     setCurrentHistoryId(historyId);
 
     setIsGenerating(true);
