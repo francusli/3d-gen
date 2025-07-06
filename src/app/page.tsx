@@ -45,7 +45,7 @@ export default function Home() {
   }, [successMessage]);
 
   return (
-    <div className="min-h-screen bg-gray-200">
+    <div className="min-h-screen bg-gray-300">
       {showConfetti && <Confetti {...confettiConfig} run={showConfetti} />}
 
       <PromptSection
