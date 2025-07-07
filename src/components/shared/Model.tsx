@@ -1,8 +1,7 @@
 import { useGLTF, Clone } from "@react-three/drei";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useRef, useEffect } from "react";
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { group } from "console";
 
 // Cache for bounding box calculations to avoid expensive recalculations
 const boundingBoxCache = new Map<

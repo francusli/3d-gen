@@ -17,13 +17,8 @@ export function useTaskPolling({
   onPreviewUrl,
   onNewModelCreated,
 }: UseTaskPollingProps) {
-  const {
-    progress,
-    setProgress,
-    setError,
-    setSuccessMessage,
-    setIsGenerating,
-  } = usePollingStore();
+  const { setProgress, setError, setSuccessMessage, setIsGenerating } =
+    usePollingStore();
 
   const setOpenNotis = useNotiStore((state) => state.setOpenNotis);
 
@@ -150,7 +145,7 @@ export function useTaskPolling({
         } else if (data.modelUrls?.glb) onModelUrl(data.modelUrls.glb);
 
         if (data.stored?.artifact)
-          setSuccessMessage("3D model generated and saved successfully!");
+          setSuccessMessage("Your 3D model has been created!");
 
         setIsGenerating(false);
         setOpenNotis(true);
@@ -168,7 +163,6 @@ export function useTaskPolling({
       onModelUrl,
       onPreviewUrl,
       onNewModelCreated,
-      progress,
       setProgress,
       setError,
       setIsGenerating,
